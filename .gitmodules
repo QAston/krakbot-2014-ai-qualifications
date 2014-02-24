@@ -1,0 +1,4 @@
+[submodule "krak"]
+	path = krak
+	url = https://github.com/uj-robotics/Krakrobot2014Qualifications
+	branch = master
