@@ -1,13 +1,18 @@
 # Zadanie kwalifikujące na krakrobot
 
-##Kalendarz
-0225 - startKrak
-0225 19:00 - Sprawdzmy czy wszystko dziala poprzez commit i zmiane kodu programu
+## Kalendarz
 
-
-
-
-0309 - Dead line
+* 0225✔ - startKrak 
+* 0225 - Wszystko dziala poprzez commit i zmiane kodu programu
+* 0226 - Generator map
+* 0226 - Prosty tester robota
+* 0227 - Obsluga ruchu robotem
+* 0228 - Obsluga S1
+* 0228 - Obsluga S2
+* 0228 - Obsluga S3
+* 0301 - Algorytm ruchu robota
+* 0302 - Pierwszy gotowy program ruchu
+* 0309 - Dead line
 
 ## Coding style
 
