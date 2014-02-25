@@ -14,6 +14,8 @@
 Trzymamy sie stylu zdefiniowanego w http://legacy.python.org/dev/peps/pep-0008
 M.in. 4 spacje intendacji, nazwa_funkcji, NazwaKlasy
 
+UWAGA - nie edytujemy nic z folderu krak, jest to submoduł git i zmiany nie bedą widoczne u innych!!!
+
 ## Todo
 
 * potrzebny jest skrypt który bedzie wykonywał testy robota na podanych mapach i sprawdzał czy czasy po ostatniej zmianie sie nie pogorszyły
