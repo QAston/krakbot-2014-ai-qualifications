@@ -9,13 +9,21 @@
 
 0309 - Dead line
 
+## Coding style
+
+Trzymamy sie stylu zdefiniowanego w http://legacy.python.org/dev/peps/pep-0008
+M.in. 4 spacje intendacji, nazwa_funkcji, NazwaKlasy
+
 ## Todo
 
 * potrzebny jest skrypt który bedzie wykonywał testy robota na podanych mapach i sprawdzał czy czasy po ostatniej zmianie sie nie pogorszyły
-* potrzebny jest inny generator map
+* potrzebny jest inny generator map - obecny generuje tylko labirynty
 * trzeba napisać dobry program robota
-** potrzebne są jakieś metody probabilistyczne do radzenia sobie z niepewnością odczytów sensorów
+* * potrzebne są jakieś metody probabilistyczne do radzenia sobie z niepewnością odczytów sensorów
 * przejść kwalifikacje
+
+## Pomysły na algorytm robota
+* tu można wpisywać co ktoś wymyśli
 
 ##instalacja
 
