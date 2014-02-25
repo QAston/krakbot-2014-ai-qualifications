@@ -1,0 +1,24 @@
+// you can put many test objects in this array
+[
+    // each object specifies test parameters
+    {
+        // "path to a file with map"
+        "map": "maps/m2.map",
+        // "Sigma of gaussian noise applied to turning motion"
+        "steering_noise": 0.0004,
+        // "Sigma of gaussian noise applied to sensed distance by sonar"
+        "sonar_noise": 0.0015,
+        // "Sigma of gaussian noise applied to the sensed GPS position"
+        "measurement_noise": 0.0015,
+        // "Time consumption (in simulation time units) of GPS"
+        "gps_delay": 2.0,
+        // "Sigma of gaussian noise applied to forward motion"
+        "distance_noise": 0.001,
+        // "Speed of the robot (i.e. units/simulation second)"
+        "speed":  5.0,
+        // "Turning speed of the robot (i.e. rad/simulation second)"
+        "turning_speed": 100.0,
+        // "Simulation time limit (in virtual time units)"
+        "simulation_time_limit":100000.0
+    }
+]
