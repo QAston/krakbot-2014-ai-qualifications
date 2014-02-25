@@ -1,5 +1,14 @@
 # Zadanie kwalifikujące na krakrobot
 
+##Kalendarz
+0225 - startKrak
+0225 19:00 - Sprawdzmy czy wszystko dziala poprzez commit i zmiane kodu programu
+
+
+
+
+0309 - Dead line
+
 ## Todo
 
 * potrzebny jest skrypt który bedzie wykonywał testy robota na podanych mapach i sprawdzał czy czasy po ostatniej zmianie sie nie pogorszyły
