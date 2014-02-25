@@ -60,8 +60,8 @@ class SimpleRobotController(RobotController):
             * **act()** - this is the basic function. It is called repeatedly after the previous command has been executed.
                 In act you should return a list. For constants see *defines.py*
 
-            *  Moving : ["move", number_of_ticks] - consumes variable amount of time: number_of_ticks*TICK_MOVE / speed
-            *  Turning : ["turn", number_of_ticks] - consumes variable amount of time: number_of_ticks*TICK_TURN / speed
+            *  Moving : ["move", number_of_ticks] - moves by number_of_ticks*TICK_MOVE in current direction; consumes variable amount of time: number_of_ticks*TICK_MOVE / speed
+            *  Turning : ["turn", number_of_ticks] - turns by number_of_ticks*TICK_TURN; consumes variable amount of time: number_of_ticks*TICK_TURN / speed
             *  Sense GPS: ["sense_gps"] - consumes variable amount of time: gps_delay
             *  Sense sonar: ["sense_sonar"] - consumes constant amount of time : 0.01 simulation time unit
             *  Sense field: ["sense_field"] - consumes constant amount of time : 0.01 simulation time_unit
