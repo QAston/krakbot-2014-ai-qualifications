@@ -26,7 +26,7 @@ UWAGA - nie edytujemy nic z folderu krak, jest to submoduł git i zmiany nie bed
 * potrzebny jest skrypt który bedzie wykonywał testy robota na podanych mapach i sprawdzał czy czasy po ostatniej zmianie sie nie pogorszyły
 * potrzebny jest inny generator map - obecny generuje tylko labirynty
 * trzeba napisać dobry program robota
-* * potrzebne są jakieś metody probabilistyczne do radzenia sobie z niepewnością odczytów sensorów
+  * potrzebne są jakieś metody probabilistyczne do radzenia sobie z niepewnością odczytów sensorów
 * przejść kwalifikacje
 
 ## Pomysły na algorytm robota
@@ -34,21 +34,21 @@ UWAGA - nie edytujemy nic z folderu krak, jest to submoduł git i zmiany nie bed
 
 ## Problemy które muszą zostać rozwiązane w algorytmie robota
 * zminimalizowanie liczby odczytów pola, aby zminimalizować kosz FIELD_TIME
- * sprawdzamy rodzaj pola przy wejsciu na nie, jesli jest szum to kilka razy (min potrzebna liczbe mozna pewnie wyliczyc)
+  * sprawdzamy rodzaj pola przy wejsciu na nie, jesli jest szum to kilka razy (min potrzebna liczbe mozna pewnie wyliczyc)
 * aby wiedziec kiedy zmienilismy pole trzeba przechowywac w jakis sposob pozycje na planszy
- * mozna wykorzystac gps, ale on szumi, co trzeba wziac pod uwage
- * mozna wykorzystac algebre liniowa do aktualizowania pozycji robota bez gps
- * mozna wykorzystac sensor odleglosci ale to tez zalezy od jego dokladnosci
- * mozna tez wykorzystac sensor typu pola, chociaz to niekoniecznie dobra metoda bo on moze rzadko zmieniac wartosc
+  * mozna wykorzystac gps, ale on szumi, co trzeba wziac pod uwage
+  * mozna wykorzystac algebre liniowa do aktualizowania pozycji robota bez gps
+  * mozna wykorzystac sensor odleglosci ale to tez zalezy od jego dokladnosci
+  * mozna tez wykorzystac sensor typu pola, chociaz to niekoniecznie dobra metoda bo on moze rzadko zmieniac wartosc
 * zmilimalizowanie liczby ruchow na planszy
- * trzeba przechowywać wewnetrzną reprezentacje planszy, aby np moc szybko wrócić do przeszukiwania po wpadnieciu w ślepą uliczke
+  * trzeba przechowywać wewnetrzną reprezentacje planszy, aby np moc szybko wrócić do przeszukiwania po wpadnieciu w ślepą uliczke
   * wewnetrzna mapa musi byc szybko przeszukana, zeby robot duzo nie jezdzil
 * zminimalizowanie liczby obrotów - obroty tez kosztują
- * trzeba wybierac optymalny kierunek obrotu
+  * trzeba wybierac optymalny kierunek obrotu
 * wykorzystanie podpowiedzi z mapy
- * czasem jest podawana optymalna sciezka
- * czasem jest podawany kierunek wyjscia
- * czasem jest podawana odleglosc euklidesowa
+  * czasem jest podawana optymalna sciezka
+  * czasem jest podawany kierunek wyjscia
+  * czasem jest podawana odleglosc euklidesowa
 
 
 ##instalacja
