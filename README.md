@@ -40,3 +40,5 @@ UWAGA - nie edytujemy nic z folderu krak, jest to submoduł git i zmiany nie bed
 * opcjonalnie scipy http://sourceforge.net/projects/scipy/
 
 
+##linki i sznurki
+kurs- https://www.udacity.com/wiki/cs373
