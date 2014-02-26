@@ -71,12 +71,15 @@ class PRC(RobotController):
         curr = self.get_discrete_position()
         ret = []
         angle = self.current_angle;
-        ret.append((curr, get_front(curr, angle)))
+        ret.append(get_front(curr, angle))
         for i in range(3):
             angle += math.pi * 0.5
             angle %= 2*math.pi
-            ret.append((curr, get_front(curr, angle)))
+            ret.append(get_front(curr, angle))
         return ret
+
+    def __str__(self):
+        return "PCR[pos:{} angl:{}]".format(self.current_position, self.current_angle)
 
 
     # commands
@@ -90,6 +93,7 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
+            print "Select Next:{}".format(str(self.controller))
             controller = self.controller
             c = controller.commands
 
@@ -100,10 +104,13 @@ class PRC(RobotController):
 
             forward = controller.get_forward_position()
 
-            if controller.times_visited[(x_disc, y_disc)] == 0:
+            if controller.times_visited[forward] == 0:
                 c.append(PRC._MoveNext(controller))
             else:
+
                 neighbours = controller.get_neighbour_positions()
+                print controller.current_position
+                print neighbours
                 left, back, right = (neighbours[i+1] not in controller.times_visited for i in range(3))
 
                 # choose optimal rotations
@@ -133,12 +140,13 @@ class PRC(RobotController):
                         c.append(PRC._MarkNotVisitedField(self.controller))
                 else:
                     visits = [controller.times_visited[neigh] for neigh in neighbours]
+
                     min_visits = min(visits)
-                    if min_visits == neighbours[0]:
+                    if min_visits == controller.times_visited[neighbours[0]]:
                         pass
-                    elif min_visits == neighbours[1]:
+                    elif min_visits == controller.times_visited[neighbours[1]]:
                         c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
-                    elif min_visits == neighbours[3]:
+                    elif min_visits == controller.times_visited[neighbours[3]]:
                         c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
                     else:
                         c.append(PRC._TurnAngleCommand(controller, math.pi))
@@ -206,6 +214,7 @@ class PRC(RobotController):
 
         def act(self):
             controller = self.controller
+
             forward = controller.get_forward_position()
 
 
@@ -243,6 +252,7 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
+            print "turning {} angle by: {}".format(str(self.controller), self.angle)
             return [TURN, int(self.angle / TICK_ROTATE)]
 
         def done(self):

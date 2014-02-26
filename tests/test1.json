@@ -20,5 +20,16 @@
         "turning_speed": 100.0,
         // "Simulation time limit (in virtual time units)"
         "simulation_time_limit":100000.0
+    },
+    {
+        "map": "maps/m1.map",
+        "steering_noise": 0.0000,
+        "sonar_noise": 0.000,
+        "measurement_noise": 0.000,
+        "gps_delay": 2.0,
+        "distance_noise": 0.000,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
     }
 ]
