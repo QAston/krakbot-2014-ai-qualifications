@@ -14,7 +14,7 @@ class SimpleRobotController(RobotController):
         Simulator params:
         @param steering_noise - variance of steering in move
         @param distance_noise - variance of distance in move
-        @param measurement_noise - variance of measurement (GPS??)
+        @param measurement_noise - variance of GPS measurement
         @param map - map for the robot simulator representing the maze or file to map
         @param init_position - starting position of the Robot (can be moved to map class) [x,y,heading]
 
@@ -27,10 +27,9 @@ class SimpleRobotController(RobotController):
         @param robot - RobotController class that will be simulated in run procedure
         """
 
-    def init(self, starting_position, steering_noise, distance_noise, sonar_noise, measurement_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
+    def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
         """
-            init(starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed, gps_delay,
-                execution_cpu_time_limit) - initialization function. Specifications of the arguments:
+            Specifications of the arguments:
             * starting_position : tuple [x,y,angle], where x and y are accurate positions of the robot (we assume
                 upper-left corner is (0,0) and x runs vertically, whereas y runs horizontally) and angle which is an angle in radians
                 with respect to X axis
@@ -57,14 +56,14 @@ class SimpleRobotController(RobotController):
 
     def act(self):
         """"
-            * **act()** - this is the basic function. It is called repeatedly after the previous command has been executed.
+            * this is the basic function. It is called repeatedly after the previous command has been executed.
                 In act you should return a list. For constants see *defines.py*
 
             *  Moving : ["move", number_of_ticks] - moves by number_of_ticks*TICK_MOVE in current direction; consumes variable amount of time: number_of_ticks*TICK_MOVE / speed
             *  Turning : ["turn", number_of_ticks] - turns by number_of_ticks*TICK_TURN; consumes variable amount of time: number_of_ticks*TICK_TURN / speed
-            *  Sense GPS: ["sense_gps"] - consumes variable amount of time: gps_delay
-            *  Sense sonar: ["sense_sonar"] - consumes constant amount of time : 0.01 simulation time unit
-            *  Sense field: ["sense_field"] - consumes constant amount of time : 0.01 simulation time_unit
+            *  Sense GPS: ["sense_gps"] - consumes variable amount of time: gps_delay - has gps_noise gaussian noise
+            *  Sense sonar: ["sense_sonar"] - consumes constant amount of time : 0.01 simulation time unit - has sonar_noise gaussian noise
+            *  Sense field: ["sense_field"] - consumes constant amount of time : 0.01 simulation time_unit - doesn't have read noise
             *  Communicate finish: ["finish"] - consumes 0 units of time
             *  Write to console: ["write_console", string] - consumes 0 units of time, however cannot be used in submission (that is
             code that you submit to us cannot execute action "write_console", you can use it only for debugging)
