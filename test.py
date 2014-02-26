@@ -25,8 +25,11 @@ robot_class = compile_robot(args.robot_file)[0]
 tests = json.loads(minified);
 # todo: run tests in parallel
 test_id = 0
+num_tests = len(tests)
 failed_tests = []
 for test in tests:
+    test_id += 1
+    print "Running test ({},{}) of {}:".format(test_id, test["map"], num_tests)
     test["map"] = str(test["map"]) # because of stupid check in simulator
     sim = simulator.KrakrobotSimulator(robot_controller_class=robot_class, simulation_dt=0.0, visualisation=False, **test)
     result = sim.run();
@@ -34,11 +37,10 @@ for test in tests:
     # todo: store results
 
     if result["goal_achieved"] == False:
-        failed_tests.append(test_id)
+        failed_tests.append((test_id, test["map"]))
 
-    ++test_id
 
 if len(failed_tests) > 0:
-    print "Failed tests: ", ",".join(failed_tests)
+    print "Failed tests: ",str(failed_tests)
 else:
     print "All test were successful"
