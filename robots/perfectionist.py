@@ -253,7 +253,7 @@ class PRC(RobotController):
 
         def act(self):
             print "turning {} angle by: {}".format(str(self.controller), self.angle)
-            return [TURN, int(self.angle / TICK_ROTATE)]
+            return [TURN, int(self.angle / TICK_ROTATE + 0.5)]
 
         def done(self):
             self.controller.current_angle = (self.controller.current_angle + self.angle) % (2*math.pi)
