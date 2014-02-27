@@ -3,6 +3,12 @@
 # uses distance sensor to see obstacles
 # doesn't use GPS
 #
+
+#
+# TODOs: relax distance/sonar requirements
+#  sonar can be used for moving - as it's always guaranteed to see something and we're on right angles just check if it returns 0.5, 1.5 etc...
+#  gps can be used for moving  - if fast enough
+#
 from defines import *
 from robot_controller import RobotController
 import math
@@ -118,9 +124,13 @@ class PRC(RobotController):
             else:
 
                 neighbours = controller.get_neighbour_positions()
-                print controller.current_position
-                print neighbours
-                left, back, right = (neighbours[i+1] not in controller.times_visited for i in range(3))
+                front, left, back, right = (neighbours[i] not in controller.times_visited for i in range(4))
+
+                if front:
+                    c.append(PRC._CheckDistanceCommand(self.controller))
+                    c.append(PRC._MarkNotVisitedField(self.controller))
+                    c.append(PRC._SelectNext(controller))
+                    return None
 
                 # choose optimal rotations
                 if left and right:
@@ -134,19 +144,30 @@ class PRC(RobotController):
                     c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
                     c.append(PRC._CheckDistanceCommand(self.controller))
                     c.append(PRC._MarkNotVisitedField(self.controller))
+                elif back:
+                    if left:
+                        c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
+                        c.append(PRC._CheckDistanceCommand(self.controller))
+                        c.append(PRC._MarkNotVisitedField(self.controller))
+                        c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
+                        c.append(PRC._CheckDistanceCommand(self.controller))
+                        c.append(PRC._MarkNotVisitedField(self.controller))
+                    else:
+                        c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
+                        if right:
+                            c.append(PRC._CheckDistanceCommand(self.controller))
+                            c.append(PRC._MarkNotVisitedField(self.controller))
+                        c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
+                        c.append(PRC._CheckDistanceCommand(self.controller))
+                        c.append(PRC._MarkNotVisitedField(self.controller))
                 elif left:
                     c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
                     c.append(PRC._CheckDistanceCommand(self.controller))
                     c.append(PRC._MarkNotVisitedField(self.controller))
-                elif right or back:
+                elif right:
                     c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
-                    if right:
-                        c.append(PRC._CheckDistanceCommand(self.controller))
-                        c.append(PRC._MarkNotVisitedField(self.controller))
-                    if back:
-                        c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
-                        c.append(PRC._CheckDistanceCommand(self.controller))
-                        c.append(PRC._MarkNotVisitedField(self.controller))
+                    c.append(PRC._CheckDistanceCommand(self.controller))
+                    c.append(PRC._MarkNotVisitedField(self.controller))
                 else:
                     visits = [controller.times_visited[neigh] for neigh in neighbours]
 
@@ -226,13 +247,13 @@ class PRC(RobotController):
 
             forward = controller.get_forward_position()
 
-
             # mark as wall
-            if controller.distance_to_obstacle < 0.9:
+            if controller.distance_to_obstacle < 0.6:
                 controller.times_visited[forward] = 65536
             # mark as not visited
             else:
                 controller.times_visited[forward] = 0
+            return None
 
         def done(self):
             return True
