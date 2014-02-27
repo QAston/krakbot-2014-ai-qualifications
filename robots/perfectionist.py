@@ -32,7 +32,14 @@ class PRC(RobotController):
         self.command = PRC._EmptyCommand(self)
         self.map[self.current_position] = self.current_field
 
-        self.turn_error = 0.0
+        # angle steering
+        self.angle_error = 0.0
+        self.simulator_angle = self.current_angle
+        # distance steering
+        self.simulator_position = self.current_position
+        self.position_error = 0.0, 0.0
+
+        #TODO: turn to right angle at the beginning of the ride
 
     def act(self):
         # run next command from list
@@ -238,16 +245,28 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
-            return [MOVE, int((self.distance)/TICK_MOVE + 0.5)]
+            controller = self.controller
+            print "moving {} by: {}".format(str(controller), self.distance)
+            dist_from_error = math.cos(angle_diff(math.atan2(controller.position_error[1], controller.position_error[0]) + math.pi
+                , controller.simulator_angle)) * vector_length(controller.position_error)
+            print "dist_from_error {}".format(dist_from_error)
+            move_times = int(max(self.distance - dist_from_error, 0.0)/TICK_MOVE + 0.5)
+            controller.simulator_position = simulate_move(move_times, controller.distance_noise, controller.simulator_position, controller.simulator_angle)
+            print "simulator_position: {}".format(controller.simulator_position)
+            return [MOVE, move_times]
 
         def done(self):
             controller = self.controller
             pos = controller.current_position
             orientation = controller.current_angle
             controller.current_position = pos[0] + self.distance * math.cos(orientation), pos[1] + self.distance * math.sin(orientation)
+            controller.position_error = (controller.current_position[0] - controller.simulator_position[0],
+                                             controller.current_position[1] - controller.simulator_position[1])
+            print "curr pos {}, sim pos {}".format(controller.current_position, controller.simulator_position)
+            print "position error:{}".format(controller.position_error)
             return True
 
-    # caution: TICK_ROTATE may be not precise enough
+    # # caution: TICK_ROTATE may be not precise enough
     class _TurnAngleCommand(object):
         def __init__(self, controller, angle):
             self.angle = angle
@@ -255,14 +274,22 @@ class PRC(RobotController):
 
         def act(self):
             controller = self.controller
+
             print "turning {} angle by: {}".format(str(controller), self.angle)
-            turn_times = int((self.angle + controller.turn_error)/ TICK_ROTATE + 0.5)
-            controller.turn_error = self.angle - TICK_ROTATE * turn_times
+            turn_times = int((self.angle + controller.angle_error)/ TICK_ROTATE + 0.5)
+            #controller.angle_error = self.angle - TICK_ROTATE * turn_times
+            #print "error: {}".format(controller.angle_error)
+
+            controller.simulator_angle = simulate_turn(turn_times, controller.steering_noise, controller.simulator_angle)
 
             return [TURN, turn_times]
 
         def done(self):
-            self.controller.current_angle = (self.controller.current_angle + self.angle) % (2*math.pi)
+            controller = self.controller
+            controller.current_angle = (controller.current_angle + self.angle) % (2*math.pi)
+
+            controller.angle_error = angle_diff(controller.simulator_angle, controller.current_angle)
+            print "sim angle {} real angle {} angle error {}".format(controller.simulator_angle, controller.current_angle, controller.angle_error)
             return True
 
     class _CheckDistanceCommand(object):
@@ -321,3 +348,26 @@ class PRC(RobotController):
 def get_front(pos, angle):
     dist = 1.0;
     return int(pos[0] + 0.5 + dist * math.cos(angle)) , int(pos[1] + 0.5 + dist * math.sin(angle))
+
+# simulate turning as it happens exactly in the guts of simulator
+# damn floating point
+def simulate_turn(turn_times, steering_noise, orientation):
+    number_steps = abs(turn_times)
+    step = 1 if turn_times == number_steps else -1
+    for i in xrange(number_steps):
+        turn = random.gauss(step*TICK_ROTATE, steering_noise)
+        orientation = (orientation+turn)%(2*math.pi)
+    return orientation
+
+def simulate_move(move_times, distance_noise, position, orientation):
+    for i in xrange(move_times):
+        distance = max(0.0,random.gauss(TICK_MOVE, distance_noise))
+        position = position[0] + distance * math.cos(orientation), position[1] + distance * math.sin(orientation)
+    return position
+
+# calcs signed diff between 2 angles
+def angle_diff(x, y):
+    return min(y-x, y-x+2*math.pi, y-x-2*math.pi, key=abs)
+
+def vector_length(v):
+    return math.sqrt(v[0]*v[0] + v[1] * v[1])
