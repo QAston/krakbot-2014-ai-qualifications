@@ -32,6 +32,8 @@ class PRC(RobotController):
         self.command = PRC._EmptyCommand(self)
         self.map[self.current_position] = self.current_field
 
+        self.turn_error = 0.0
+
     def act(self):
         # run next command from list
         act = None
@@ -236,7 +238,7 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
-            return [MOVE, float(self.distance)/TICK_MOVE]
+            return [MOVE, int((self.distance)/TICK_MOVE + 0.5)]
 
         def done(self):
             controller = self.controller
@@ -252,8 +254,12 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
-            print "turning {} angle by: {}".format(str(self.controller), self.angle)
-            return [TURN, int(self.angle / TICK_ROTATE + 0.5)]
+            controller = self.controller
+            print "turning {} angle by: {}".format(str(controller), self.angle)
+            turn_times = int((self.angle + controller.turn_error)/ TICK_ROTATE + 0.5)
+            controller.turn_error = self.angle - TICK_ROTATE * turn_times
+
+            return [TURN, turn_times]
 
         def done(self):
             self.controller.current_angle = (self.controller.current_angle + self.angle) % (2*math.pi)
