@@ -260,12 +260,12 @@ class PRC(RobotController):
             return [SENSE_SONAR]
 
         def done(self):
-            print "Check wall:{}".format(str(self.controller))
             controller = self.controller
             self.samples.append(controller.last_sonar_read)
             num_samples = len(self.samples)
             # from highest to lowest-when equal highest takes precenence
             if (num_samples == controller.distance_samples_high):
+                print "Check wall:{}".format(str(self.controller))
                 print "-high-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
                 print "-distance:{}".format(distance)
@@ -275,6 +275,7 @@ class PRC(RobotController):
                 controller.mark_clear_fields(fields, True)
                 return True
             elif (num_samples == controller.distance_samples_medium or num_samples == controller.distance_samples_low):
+                print "Check wall:{}".format(str(self.controller))
                 print "-med, low-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
                 print "-distance:{}".format(distance)

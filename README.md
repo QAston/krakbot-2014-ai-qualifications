@@ -3,9 +3,9 @@
 ## Kalendarz
 
 * 0225✔ - startKrak
-* 0225 - Wszystko dziala poprzez commit i zmiane kodu programu
-* 0226 - Generator map
-* 0226 - Prosty tester robota
+* 0225✔ - Wszystko dziala poprzez commit i zmiane kodu programu
+* 0226✔ - Generator map
+* 0226✔ - Prosty tester robota
 * 0227 - Obsluga ruchu robotem
 * 0228 - Obsluga S1
 * 0228 - Obsluga S2
