@@ -33,13 +33,6 @@ UWAGA - nie edytujemy nic z folderu krak, jest to submoduł git i zmiany nie bed
 * tu można wpisywać co ktoś wymyśli
 
 ## Problemy które muszą zostać rozwiązane w algorytmie robota
-* zminimalizowanie liczby odczytów pola, aby zminimalizować kosz FIELD_TIME
-    * sprawdzamy rodzaj pola przy wejsciu na nie, jesli jest szum to kilka razy (min potrzebna liczbe mozna pewnie wyliczyc)
-* aby wiedziec kiedy zmienilismy pole trzeba przechowywac w jakis sposob pozycje na planszy
-    * mozna wykorzystac gps, ale on szumi, co trzeba wziac pod uwage
-    * mozna wykorzystac algebre liniowa do aktualizowania pozycji robota bez gps
-    * mozna wykorzystac sensor odleglosci ale to tez zalezy od jego dokladnosci
-    * mozna tez wykorzystac sensor typu pola, chociaz to niekoniecznie dobra metoda bo on moze rzadko zmieniac wartosc
 * zmilimalizowanie liczby ruchow na planszy
     * trzeba przechowywać wewnetrzną reprezentacje planszy, aby np moc szybko wrócić do przeszukiwania po wpadnieciu w ślepą uliczke
     * wewnetrzna mapa musi byc szybko przeszukana, zeby robot duzo nie jezdzil
