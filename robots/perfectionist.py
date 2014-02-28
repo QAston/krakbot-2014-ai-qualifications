@@ -1,6 +1,6 @@
 #
 # This robot assumes that movement is perfect
-# uses distance sensor to see obstacles
+# uses distance sensor to see obstacles - can work with max noise
 # doesn't use GPS
 #
 
@@ -15,6 +15,13 @@ import math
 import random
 
 class PRC(RobotController):
+
+    DISTANCE_PRECISION_LOW = 2
+    DISTANCE_PRECISION_MEDIUM = 1
+    DISTANCE_PRECISION_HIGH = 0.4
+    DISTANCE_CERTAINTY = 0.9999
+
+    POSITION_MARGIN = 0.1
 
     def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
         self.starting_position = starting_position
@@ -44,6 +51,11 @@ class PRC(RobotController):
         # distance steering
         self.simulator_position = self.current_position
         self.position_error = 0.0, 0.0
+
+        #distance checks
+        self.distance_samples_low = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_LOW, sonar_noise) + 1
+        self.distance_samples_medium = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_MEDIUM, sonar_noise) + 1
+        self.distance_samples_high = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_HIGH, sonar_noise) + 1
 
         #TODO: turn to right angle at the beginning of the ride
 
@@ -129,39 +141,30 @@ class PRC(RobotController):
                 # choose optimal rotations
                 if left and right:
                     c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
-                    c.append(PRC._CheckDistanceCommand(self.controller))
-                    c.append(PRC._MarkNotVisitedField(self.controller))
+                    c.append(PRC._CheckWall(self.controller))
                     c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
                     if (back):
-                        c.append(PRC._CheckDistanceCommand(self.controller))
-                        c.append(PRC._MarkNotVisitedField(self.controller))
+                        c.append(PRC._CheckWall(self.controller))
                     c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
-                    c.append(PRC._CheckDistanceCommand(self.controller))
-                    c.append(PRC._MarkNotVisitedField(self.controller))
+                    c.append(PRC._CheckWall(self.controller))
                 elif back:
                     if left:
                         c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
-                        c.append(PRC._CheckDistanceCommand(self.controller))
-                        c.append(PRC._MarkNotVisitedField(self.controller))
+                        c.append(PRC._CheckWall(self.controller))
                         c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
-                        c.append(PRC._CheckDistanceCommand(self.controller))
-                        c.append(PRC._MarkNotVisitedField(self.controller))
+                        c.append(PRC._CheckWall(self.controller))
                     else:
                         c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
                         if right:
-                            c.append(PRC._CheckDistanceCommand(self.controller))
-                            c.append(PRC._MarkNotVisitedField(self.controller))
+                            c.append(PRC._CheckWall(self.controller))
                         c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
-                        c.append(PRC._CheckDistanceCommand(self.controller))
-                        c.append(PRC._MarkNotVisitedField(self.controller))
+                        c.append(PRC._CheckWall(self.controller))
                 elif left:
                     c.append(PRC._TurnAngleCommand(controller, 0.5 *math.pi))
-                    c.append(PRC._CheckDistanceCommand(self.controller))
-                    c.append(PRC._MarkNotVisitedField(self.controller))
+                    c.append(PRC._CheckWall(self.controller))
                 elif right:
                     c.append(PRC._TurnAngleCommand(controller, -0.5 *math.pi))
-                    c.append(PRC._CheckDistanceCommand(self.controller))
-                    c.append(PRC._MarkNotVisitedField(self.controller))
+                    c.append(PRC._CheckWall(self.controller))
                 else:
                     visits = [controller.times_visited[neigh] for neigh in neighbours]
 
@@ -222,8 +225,7 @@ class PRC(RobotController):
             forward = controller.get_forward_position()
 
             if forward not in controller.times_visited:
-                c.append(PRC._CheckDistanceCommand(self.controller))
-                c.append(PRC._MarkNotVisitedField(self.controller))
+                c.append(PRC._CheckWall(self.controller))
 
             c.append(PRC._SelectNext(self.controller))
             return None
@@ -252,33 +254,53 @@ class PRC(RobotController):
     class _CheckWall(object):
         def __init__(self, controller):
             self.controller = controller
+            self.samples = []
 
         def act(self):
-            return None
+            return [SENSE_SONAR]
 
         def done(self):
-            return True
-
-
-    class _MarkNotVisitedField(object):
-        def __init__(self, controller):
-            self.controller = controller
-
-        def act(self):
+            print "Check wall:{}".format(str(self.controller))
             controller = self.controller
+            self.samples.append(controller.last_sonar_read)
+            num_samples = len(self.samples)
+            # from highest to lowest-when equal highest takes precenence
+            if (num_samples == controller.distance_samples_high):
+                print "-high-samples:{}".format(num_samples)
+                distance = sum(self.samples)/num_samples
+                print "-distance:{}".format(distance)
+                distance -= 0.5 + PRC.POSITION_MARGIN
+                fields = int(distance + 0.5)
+                print "-fields:{}".format(fields)
+                controller.mark_clear_fields(fields, True)
+                return True
+            elif (num_samples == controller.distance_samples_medium or num_samples == controller.distance_samples_low):
+                print "-med, low-samples:{}".format(num_samples)
+                distance = sum(self.samples)/num_samples
+                print "-distance:{}".format(distance)
+                fields = controller.get_clear_fields(distance,
+                            PRC.DISTANCE_PRECISION_LOW if num_samples == controller.distance_samples_low else PRC.DISTANCE_PRECISION_MEDIUM)
+                print "-fields:{}".format(fields)
+                if fields > 1:
+                    controller.mark_clear_fields(fields, False)
+                    return True
 
-            forward = controller.get_forward_position()
-
-            # mark as wall
-            if controller.distance_to_obstacle < 1:
-                controller.times_visited[forward] = 65536
-            # mark as not visited
-            else:
-                controller.times_visited[forward] = 0
             return None
 
-        def done(self):
-            return True
+    def get_clear_fields(self, distance, precision):
+        distance -= 0.5 + PRC.POSITION_MARGIN + precision
+        return int(math.floor(distance))
+
+    def mark_clear_fields(self, dist, mark_wall):
+        distance = min(5, dist) # assume angle inprecision
+        cur = self.get_discrete_position()
+        for i in range(distance):
+            cur = get_front(cur, self.current_angle)
+            if cur not in self.times_visited:
+                self.times_visited[cur] = 0
+        if mark_wall and dist == distance:
+            cur = get_front(cur, self.current_angle)
+            self.times_visited[cur] = 65536
 
 
     # caution: TICK_MOVE may be not precise enough
@@ -294,7 +316,8 @@ class PRC(RobotController):
                 , controller.simulator_angle)) * vector_length(controller.position_error)
             print "dist_from_error {}".format(dist_from_error)
             move_times = int(max(self.distance - dist_from_error, 0.0)/TICK_MOVE + 0.5)
-            controller.simulator_position = simulate_move(move_times, controller.distance_noise, controller.simulator_position, controller.simulator_angle)
+            #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
+            controller.simulator_position = simulate_move(move_times, 0, controller.simulator_position, controller.simulator_angle)
             print "simulator_position: {}".format(controller.simulator_position)
             return [MOVE, move_times]
 
@@ -323,7 +346,8 @@ class PRC(RobotController):
             #controller.angle_error = self.angle - TICK_ROTATE * turn_times
             #print "error: {}".format(controller.angle_error)
 
-            controller.simulator_angle = simulate_turn(turn_times, controller.steering_noise, controller.simulator_angle)
+            #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
+            controller.simulator_angle = simulate_turn(turn_times, 0, controller.simulator_angle)
 
             return [TURN, turn_times]
 
