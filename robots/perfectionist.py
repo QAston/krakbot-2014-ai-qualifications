@@ -110,7 +110,7 @@ class PRC(RobotController):
 
 
     # commands
-    # subclasses of PRC because of the way simulator loads classes
+    # fields of PRC because of the way simulator loads classes
     # act - returns action to do for a robot, can be None
     # done - returns None if action isn't finished yet, other things when finished
 
@@ -333,7 +333,7 @@ class PRC(RobotController):
             print "position error:{}".format(controller.position_error)
             return True
 
-    # # caution: TICK_ROTATE may be not precise enough
+    # caution: TICK_ROTATE may be not precise enough
     class _TurnAngleCommand(object):
         def __init__(self, controller, angle):
             self.angle = angle
