@@ -52,6 +52,6 @@
         "distance_noise": 0.000,
         "speed":  5.0,
         "turning_speed": 100.0,
-        "simulation_time_limit":1000
+        "simulation_time_limit":100000.0
     }
 ]
