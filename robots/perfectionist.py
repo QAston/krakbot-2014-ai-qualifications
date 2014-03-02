@@ -320,6 +320,9 @@ class PRC(RobotController):
             #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
             controller.simulator_position = simulate_move(move_times, 0, controller.simulator_position, controller.simulator_angle)
             print "simulator_position: {}".format(controller.simulator_position)
+
+            controller.simulator_position = calculate_law_of_big_numbers_error(move_times,
+                controller.distance_noise, controller.simulator_position, controller.simulator_angle)
             return [MOVE, move_times]
 
         def done(self):
@@ -331,6 +334,7 @@ class PRC(RobotController):
                                              controller.current_position[1] - controller.simulator_position[1])
             print "curr pos {}, sim pos {}".format(controller.current_position, controller.simulator_position)
             print "position error:{}".format(controller.position_error)
+
             return True
 
     # caution: TICK_ROTATE may be not precise enough
@@ -430,6 +434,13 @@ def simulate_turn(turn_times, steering_noise, orientation):
 def simulate_move(move_times, distance_noise, position, orientation):
     for i in xrange(move_times):
         distance = max(0.0,random.gauss(TICK_MOVE, distance_noise))
+        position = position[0] + distance * math.cos(orientation), position[1] + distance * math.sin(orientation)
+    return position
+
+def calculate_law_of_big_numbers_error(move_times, distance_noise, position, orientation):
+    for i in xrange(move_times):
+        # add negative error to simulator position, so in error calc it shows up positive
+        distance = -min(0.0,random.gauss(TICK_MOVE, distance_noise))
         position = position[0] + distance * math.cos(orientation), position[1] + distance * math.sin(orientation)
     return position
 

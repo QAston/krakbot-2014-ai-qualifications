@@ -1,26 +1,26 @@
 [
     {
-        "time_elapsed": 0.7018408729017012, 
+        "time_elapsed": 0.7007392113801842, 
         "test_id": 1, 
-        "time_consumed_robot": 5.0, 
+        "time_consumed_robot": 4.0, 
         "goal_achieved": true
     }, 
     {
         "time_elapsed": 49.03743999992688, 
         "test_id": 2, 
-        "time_consumed_robot": 686.0, 
+        "time_consumed_robot": 754.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 291.13744000073575, 
+        "time_elapsed": 291.3374400007356, 
         "test_id": 3, 
-        "time_consumed_robot": 846.0, 
+        "time_consumed_robot": 925.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1000.0060199970384, 
+        "time_elapsed": 998.9374399969493, 
         "test_id": 4, 
-        "time_consumed_robot": 931.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 1033.0, 
+        "goal_achieved": true
     }
 ]
