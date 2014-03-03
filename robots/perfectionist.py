@@ -6,6 +6,8 @@
 #todo: optimize this code:P
 #todo: compare avg speeds with other algorithms to choose the fastest for given config
 #todo: infer angle based on movement with gps
+#todo: use better heuristic strategy for this robot
+#  for example - stop turning on first field found?
 #
 from defines import *
 from robot_controller import RobotController
@@ -74,6 +76,8 @@ class PRC(RobotController):
         self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision, sonar_noise) + 1
         self.gps_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision, gps_noise) + 1
 
+        self.has_perfect_steering = steering_noise <= 0.000002
+
         # check if we need position corrections
         if self.drive_max_diff - TICK_MOVE <= 0.0003 and steering_noise <= 0.000003: # just tiny steering changes
             self.update_movement_position_class = PRC._EmptyCommand
@@ -81,7 +85,9 @@ class PRC(RobotController):
         else:
             #todo: prefer gps for big steering_noise
             # gps better than sonar
-            if self.gps_samples_position * self.get_gps_time() <= self.distance_samples_position * self.get_sonar_time():
+            if (not self.has_perfect_steering or
+                    self.gps_samples_position * self.get_gps_time() <= self.distance_samples_position * self.get_sonar_time()):
+
                 self.update_movement_position_class = PRC._UpdateMovementPositionWithGps
                 # update with real gps precision if better
                 if gps_noise == 0.0:
@@ -159,6 +165,11 @@ class PRC(RobotController):
             ret.append(get_front(curr, angle))
         return ret
 
+    def get_forward_vector(self):
+        pos = self.get_discrete_position()
+        front = get_front(pos, self.theoretical_angle)
+        return front[0] - pos[0], front[1] - pos[1]
+
     def get_pos_precision(self):
         return self.update_position_precision + self.drive_precision
 
@@ -174,6 +185,15 @@ class PRC(RobotController):
 
     def clear_distance_cache(self):
         self.sonar_cache[:] = []
+
+    def get_num_fields_to_next_wall(self):
+        curr = self.get_forward_position()
+        angle = self.theoretical_angle;
+        i = 0
+        while self.times_visited[curr] < 65536:
+            i += 1
+            curr = get_front(curr, angle)
+        return i
 
     def __str__(self):
         return "PCR[pos:{} angl:{}]".format(self.theoretical_position, self.theoretical_angle)
@@ -281,12 +301,11 @@ class PRC(RobotController):
         def act(self):
             controller = self.controller
             if not self.init:
-                #print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
                 self.init = True
                 pos = controller.theoretical_position
                 orientation = controller.theoretical_angle
                 self.target_position = pos[0] + self.distance * math.cos(orientation), pos[1] + self.distance * math.sin(orientation)
-                controller.theoretical_position = self.target_position
+                #print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
 
             vector = (self.target_position[0] - controller.movement_position[0],
                                              self.target_position[1] - controller.movement_position[1])
@@ -297,6 +316,9 @@ class PRC(RobotController):
             move_times = int(max(dist, 0.0)/controller.drive_max_diff + 0.5)
             if move_times >= 1:
                 controller.commands = [PRC._MoveTicks(controller, move_times), controller.update_movement_position_class(controller), self] + controller.commands
+            else:
+                controller.theoretical_position = self.target_position
+
             return None
 
 
@@ -337,7 +359,7 @@ class PRC(RobotController):
             controller = self.controller
             self.samples.append(controller.last_gps_read)
             num_samples = len(self.samples)
-            # from highest to lowest-when equal highest takes precenence
+
             if (num_samples >= controller.gps_samples_position):
 
                 sum = 0,0
@@ -354,6 +376,8 @@ class PRC(RobotController):
         def __init__(self, controller):
             self.controller = controller
             self.samples = controller.sonar_cache
+            if (not controller.has_perfect_steering):
+                raise ValueError("self.has_perfect_steering is not set but movement relies on steering")
 
         def act(self):
             return [SENSE_SONAR]
@@ -362,11 +386,17 @@ class PRC(RobotController):
             controller = self.controller
             self.samples.append(controller.last_sonar_read)
             num_samples = len(self.samples)
-            # from highest to lowest-when equal highest takes precenence
+
             if (num_samples >= controller.distance_samples_position):
-                #TODO: calc movement position from sonar
                 distance = sum(self.samples)/num_samples
-                #print "UpdateMPosWithSonar: samples {}, move_pos{}".format(num_samples, controller.movement_position)
+                fields_to_wall = controller.get_num_fields_to_next_wall()
+                target_dist = fields_to_wall + 0.5
+
+                fwd = controller.get_forward_vector()
+                controller.movement_position = (controller.theoretical_position[0] + (target_dist - distance) * fwd[0],
+                    controller.theoretical_position[1] + (target_dist - distance) * fwd[1])
+
+                #print "UpdateMPosWithSonar: target_dist {}, distance {}, move_pos{}".format(target_dist, distance, controller.movement_position)
 
                 return True
             return None
@@ -437,23 +467,26 @@ class PRC(RobotController):
             num_samples = len(self.samples)
             # from highest to lowest-when equal highest takes precenence
             if (num_samples >= controller.distance_samples_detect_wall):
-                print "Check wall:{}".format(str(self.controller))
-                print "-high-samples:{}".format(num_samples)
+                #print "Check wall:{}".format(str(self.controller))
+                #print "-high-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
-                print "-distance:{}".format(distance)
+                #print "-distance:{}".format(distance)
                 distance -= 0.5
                 fields = int(distance + 0.5)
-                print "-fields:{}".format(fields)
+                #print "-fields:{}".format(fields)
                 controller.mark_clear_fields(fields, True)
                 return True
-            elif (num_samples == controller.distance_samples_medium or num_samples == controller.distance_samples_low):
-                print "Check wall:{}".format(str(self.controller))
-                print "-med, low-samples:{}".format(num_samples)
+
+            # for perfect steering always use precise dist check
+            elif (not controller.has_perfect_steering
+                    and (num_samples == controller.distance_samples_medium or num_samples == controller.distance_samples_low)):
+                #print "Check wall:{}".format(str(self.controller))
+                #print "-med, low-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
-                print "-distance:{}".format(distance)
+                #print "-distance:{}".format(distance)
                 fields = controller.get_clear_fields(distance,
                             PRC.DISTANCE_PRECISION_LOW if num_samples == controller.distance_samples_low else PRC.DISTANCE_PRECISION_MEDIUM)
-                print "-fields:{}".format(fields)
+                #print "-fields:{}".format(fields)
                 if fields > 1:
                     controller.mark_clear_fields(fields, False)
                     return True
@@ -465,13 +498,14 @@ class PRC(RobotController):
         return int(math.floor(distance))
 
     def mark_clear_fields(self, dist, mark_wall):
-        distance = min(5, dist) # assume angle inprecision
+        # mark fields clear only for near fields, but when self.has_perfect_steering mark all fields up to the wall
+        distance = dist if self.has_perfect_steering else min(5, dist)
         cur = self.get_discrete_position()
         for i in range(distance):
             cur = get_front(cur, self.theoretical_angle)
             if cur not in self.times_visited:
                 self.times_visited[cur] = 0
-        if mark_wall and dist == distance:
+        if (mark_wall and dist == distance) or self.has_perfect_steering:
             cur = get_front(cur, self.theoretical_angle)
             self.times_visited[cur] = 65536
 
