@@ -32,7 +32,7 @@ for test in tests:
     test_id += 1
     print "--+Running test ({},{}) of {}:".format(test_id, test["map"], num_tests)
     test["map"] = str(test["map"]) # because of stupid check in simulator
-    sim = simulator.KrakrobotSimulator(robot_controller_class=robot_class, simulation_dt=0.0, visualisation=False, **test)
+    sim = simulator.KrakrobotSimulator(robot_controller_class=robot_class, simulation_dt=0.0, visualisation=False, iteration_write_frequency=1000000, **test)
     result = sim.run();
     print "--+Test{} has finished. Results: {}".format(test_id, result)
     results.append(result)

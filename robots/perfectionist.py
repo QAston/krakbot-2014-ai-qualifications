@@ -2,8 +2,8 @@
 # This robot assumes that movement is perfect
 # uses distance sensor to see obstacles - can work with max noise
 # optionally uses gps when driving/steering fails
-# tolerates very small
 #
+#todo: optimize this code:P
 #
 from defines import *
 from robot_controller import RobotController
@@ -16,13 +16,12 @@ class PRC(RobotController):
 
     DISTANCE_PRECISION_LOW = 2
     DISTANCE_PRECISION_MEDIUM = 1
-    DISTANCE_PRECISION_HIGH = 0.4
-    DISTANCE_PRECISION_HIGHEST = 0.05
     DISTANCE_CERTAINTY = 0.9999
-    DISTANCE_CERTAINTY_HIGHEST_PREC = 0.97
 
-    GPS_CERTAINTY = 0.99
-    GPS_PRECISION = 0.1
+    POSITION_CERTAINTY = 0.99
+
+    MIN_POSITION_PRECISION = 0.3 # how much from theoretical position we can be for alorithm to work
+    MAX_ALLOWED_DRIVE_DIFF = 0.4
 
     def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
         self.starting_position = starting_position
@@ -52,39 +51,65 @@ class PRC(RobotController):
         self.movement_position = self.theoretical_position
         self.movement_angle = self.theoretical_angle
 
-        #scipy doesn't tolerate 0 scale
+        #scipy doesn't tolerate 0 noise
         if distance_noise > 0:
             self.drive_max_diff = stats.norm.interval(0.95, loc=TICK_MOVE, scale=distance_noise)[1]
         else:
             self.drive_max_diff = TICK_MOVE
 
-        #todo: this can vary on sensors precision theoretically
-        if self.drive_max_diff - TICK_MOVE >= 0.3:
+        if self.drive_max_diff - TICK_MOVE >= PRC.MAX_ALLOWED_DRIVE_DIFF:
             raise ValueError("This kind of robot won't work with so big diff in movement")
 
         self.angle_error = 0.0
 
+        #CALCULATE SENSOR PRECISIONS
+
+        self.drive_precision = (self.drive_max_diff - TICK_MOVE)  / 2
+        # calculate how much precision we need from sensors
+        self.update_position_precision = PRC.MIN_POSITION_PRECISION - self.drive_precision
+        if self.update_position_precision < 0.0001:
+            raise ValueError("Cannot get enough precision for algorithm to work")
+
+        self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision, sonar_noise) + 1
+        self.gps_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision, gps_noise) + 1
+
+        #TODO: verify this constant!
+        # check if we need position corrections
+        if self.drive_max_diff < 0.05:
+            self.update_movement_position_class = PRC._EmptyCommand
+            self.update_position_precision = 0.0
+        else:
+            #todo: prefer gps for big steering_noise
+            # gps better than sonar
+            if self.gps_samples_position * self.get_gps_time() <= self.distance_samples_position * self.get_sonar_time():
+                self.update_movement_position_class = PRC._UpdateMovementPositionWithGps
+                # update with real gps precision if better
+                if gps_noise == 0.0:
+                    self.update_position_precision = 0.0
+                else:
+                    self.update_position_precision = min(self.update_position_precision, stats.norm.interval(PRC.POSITION_CERTAINTY, loc=0.0, scale=gps_noise)[1])
+
+            # sonar better than gps
+            else:
+                self.update_movement_position_class = PRC._UpdateMovementPositionWithSonar
+                # update with real sonar precision if better
+                if gps_noise == 0.0:
+                    self.update_position_precision = 0.0
+                else:
+                    self.update_position_precision = min(self.update_position_precision, stats.norm.interval(PRC.POSITION_CERTAINTY, loc=0.0, scale=sonar_noise)[1])
+
+        self.detect_wall_precision = 0.1 + PRC.MIN_POSITION_PRECISION - self.update_position_precision
+
         #distance checks
         self.distance_samples_low = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_LOW, sonar_noise) + 1
         self.distance_samples_medium = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_MEDIUM, sonar_noise) + 1
-        self.distance_samples_high = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_HIGH, sonar_noise) + 1
-        self.distance_samples_highest = num_samples_needed(PRC.DISTANCE_CERTAINTY_HIGHEST_PREC, PRC.DISTANCE_PRECISION_HIGHEST, sonar_noise) + 1
+        self.distance_samples_detect_wall = num_samples_needed(PRC.DISTANCE_CERTAINTY, self.detect_wall_precision, sonar_noise) + 1
 
-        self.gps_samples = num_samples_needed(PRC.GPS_CERTAINTY, PRC.GPS_PRECISION, sonar_noise) + 1
 
-        #TODO: verify this constant!
-        if self.drive_max_diff < 0.05:
-            self.update_movement_position_class = PRC._EmptyCommand
-        else:
-            #TODO, first choose most precise, then time
-            if self.gps_samples * self.get_gps_time() <= self.distance_samples_highest * self.get_sonar_time():
-                self.update_movement_position_class = PRC._UpdateMovementPositionWithGps
-            else:
-                self.update_movement_position_class = PRC._UpdateMovementPositionWithSonar
+        print "Info: drive_diff: {}, update_position_precision: {}, detect_wall_precision {}, drive_precision{}".format(self.drive_max_diff,
+            self.update_position_precision, self.detect_wall_precision, self.drive_precision)
 
-        print "Info: drive_diff: {}, gps_samples: {}".format(self.drive_max_diff, self.gps_samples)
-
-        #TODO: turn to right angle at the beginning of the ride
+        #TODO: turn to right angle at the beginning of the ride becase we start at starting_position[2] which may not be multiplier of Pi/2
 
     def act(self):
         # run next command from list
@@ -132,10 +157,8 @@ class PRC(RobotController):
             ret.append(get_front(curr, angle))
         return ret
 
-    def get_pos_inprecision(self):
-        # self.drive_max_diff + gps_precision or distance_precision
-        # can't be bigger than 0.5 or algorithms won't work
-        return 0.1
+    def get_pos_precision(self):
+        return self.update_position_precision + self.drive_precision
 
     def get_sonar_time(self):
         return SONAR_TIME
@@ -309,7 +332,7 @@ class PRC(RobotController):
             self.samples.append(controller.last_gps_read)
             num_samples = len(self.samples)
             # from highest to lowest-when equal highest takes precenence
-            if (num_samples >= controller.gps_samples):
+            if (num_samples >= controller.gps_samples_position):
 
                 sum = 0,0
                 for sample in self.samples:
@@ -338,7 +361,7 @@ class PRC(RobotController):
             self.samples.append(controller.last_sonar_read)
             num_samples = len(self.samples)
             # from highest to lowest-when equal highest takes precenence
-            if (num_samples >= controller.distance_samples_highest):
+            if (num_samples >= controller.distance_samples_position):
                 #TODO: calc movement position from sonar
                 distance = sum(self.samples)/num_samples
                 print "UpdateMPosWithSonar: samples {}, move_pos{}".format(num_samples, controller.movement_position)
@@ -411,12 +434,12 @@ class PRC(RobotController):
             self.samples.append(controller.last_sonar_read)
             num_samples = len(self.samples)
             # from highest to lowest-when equal highest takes precenence
-            if (num_samples >= controller.distance_samples_high):
+            if (num_samples >= controller.distance_samples_detect_wall):
                 print "Check wall:{}".format(str(self.controller))
                 print "-high-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
                 print "-distance:{}".format(distance)
-                distance -= 0.5 + controller.get_pos_inprecision()
+                distance -= 0.5 + controller.get_pos_precision()
                 fields = int(distance + 0.5)
                 print "-fields:{}".format(fields)
                 controller.mark_clear_fields(fields, True)
@@ -436,7 +459,7 @@ class PRC(RobotController):
             return None
 
     def get_clear_fields(self, distance, precision):
-        distance -= 0.5 + self.get_pos_inprecision() + precision
+        distance -= 0.5 + self.get_pos_precision() + precision
         return int(math.floor(distance))
 
     def mark_clear_fields(self, dist, mark_wall):

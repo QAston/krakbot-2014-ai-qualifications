@@ -1,6 +1,6 @@
 [
     {
-        "time_elapsed": 0.7013706265230675, 
+        "time_elapsed": 0.6961976247088169, 
         "test_id": 1, 
         "time_consumed_robot": 5.0, 
         "goal_achieved": true
@@ -8,25 +8,25 @@
     {
         "time_elapsed": 49.03743999992688, 
         "test_id": 2, 
-        "time_consumed_robot": 693.0, 
+        "time_consumed_robot": 404.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 290.83744000073574, 
+        "time_elapsed": 290.1374400007351, 
         "test_id": 3, 
-        "time_consumed_robot": 852.0, 
+        "time_consumed_robot": 390.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1001.7374399969556, 
+        "time_elapsed": 1005.9374399969508, 
         "test_id": 4, 
-        "time_consumed_robot": 929.0, 
+        "time_consumed_robot": 469.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1001.921609880492, 
+        "time_elapsed": 1001.7907293832037, 
         "test_id": 5, 
-        "time_consumed_robot": 9287.0, 
+        "time_consumed_robot": 429.0, 
         "goal_achieved": true
     }
 ]
