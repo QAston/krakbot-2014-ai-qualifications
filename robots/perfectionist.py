@@ -1,13 +1,9 @@
 #
 # This robot assumes that movement is perfect
 # uses distance sensor to see obstacles - can work with max noise
-# doesn't use GPS
+# optionally uses gps when driving/steering fails
+# tolerates very small
 #
-
-#
-# TODOs: relax distance/sonar requirements
-#  sonar can be used for moving - as it's always guaranteed to see something and we're on right angles just check if it returns 0.5, 1.5 etc...
-#  gps can be used for moving  - if fast enough
 #
 from defines import *
 from robot_controller import RobotController
@@ -25,7 +21,8 @@ class PRC(RobotController):
     DISTANCE_CERTAINTY = 0.9999
     DISTANCE_CERTAINTY_HIGHEST_PREC = 0.97
 
-    POSITION_MARGIN = 0.1
+    GPS_CERTAINTY = 0.99
+    GPS_PRECISION = 0.1
 
     def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
         self.starting_position = starting_position
@@ -55,6 +52,16 @@ class PRC(RobotController):
         self.movement_position = self.theoretical_position
         self.movement_angle = self.theoretical_angle
 
+        #scipy doesn't tolerate 0 scale
+        if distance_noise > 0:
+            self.drive_max_diff = stats.norm.interval(0.95, loc=TICK_MOVE, scale=distance_noise)[1]
+        else:
+            self.drive_max_diff = TICK_MOVE
+
+        #todo: this can vary on sensors precision theoretically
+        if self.drive_max_diff - TICK_MOVE >= 0.3:
+            raise ValueError("This kind of robot won't work with so big diff in movement")
+
         self.angle_error = 0.0
 
         #distance checks
@@ -63,12 +70,19 @@ class PRC(RobotController):
         self.distance_samples_high = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_HIGH, sonar_noise) + 1
         self.distance_samples_highest = num_samples_needed(PRC.DISTANCE_CERTAINTY_HIGHEST_PREC, PRC.DISTANCE_PRECISION_HIGHEST, sonar_noise) + 1
 
-        #scipy doesn't tolerate 0 scale
-        if distance_noise > 0:
-            self.drive_max_diff = stats.norm.interval(0.95, loc=TICK_MOVE, scale=distance_noise)[1]
-        else:
-            self.drive_max_diff = TICK_MOVE
+        self.gps_samples = num_samples_needed(PRC.GPS_CERTAINTY, PRC.GPS_PRECISION, sonar_noise) + 1
 
+        #TODO: verify this constant!
+        if self.drive_max_diff < 0.05:
+            self.update_movement_position_class = PRC._EmptyCommand
+        else:
+            #TODO, first choose most precise, then time
+            if self.gps_samples * self.get_gps_time() <= self.distance_samples_highest * self.get_sonar_time():
+                self.update_movement_position_class = PRC._UpdateMovementPositionWithGps
+            else:
+                self.update_movement_position_class = PRC._UpdateMovementPositionWithSonar
+
+        print "Info: drive_diff: {}, gps_samples: {}".format(self.drive_max_diff, self.gps_samples)
 
         #TODO: turn to right angle at the beginning of the ride
 
@@ -117,6 +131,17 @@ class PRC(RobotController):
             angle %= 2*math.pi
             ret.append(get_front(curr, angle))
         return ret
+
+    def get_pos_inprecision(self):
+        # self.drive_max_diff + gps_precision or distance_precision
+        # can't be bigger than 0.5 or algorithms won't work
+        return 0.1
+
+    def get_sonar_time(self):
+        return SONAR_TIME
+
+    def get_gps_time(self):
+        return self.gps_delay
 
     def __str__(self):
         return "PCR[pos:{} angl:{}]".format(self.theoretical_position, self.theoretical_angle)
@@ -234,17 +259,14 @@ class PRC(RobotController):
             vector = (self.target_position[0] - controller.movement_position[0],
                                              self.target_position[1] - controller.movement_position[1])
 
-            print controller.drive_max_diff
-
             dist = math.cos(angle_diff(math.atan2(vector[1], vector[0])
                 , controller.movement_angle)) * vector_length(vector)
 
-            print "movement dist {}".format(dist)
-            move_times = int(max(dist, 0.0)/controller.drive_max_diff)
-            print "move times {}".format(move_times)
+            move_times = int(max(dist, 0.0)/controller.drive_max_diff + 0.5)
             if move_times >= 1:
-                controller.commands[:] = [PRC._MoveTicks(controller, move_times), PRC._UpdateMovementPosition(controller), self] + controller.commands
+                controller.commands = [PRC._MoveTicks(controller, move_times), controller.update_movement_position_class(controller), self] + controller.commands
             return None
+
 
         def done(self):
             return True
@@ -264,43 +286,65 @@ class PRC(RobotController):
             # account for distribution bias
             controller.movement_position = calculate_law_of_big_numbers_error(self.move_times,
                 controller.distance_noise, controller.movement_position, controller.movement_angle)
+
             print "-movement_position: {}".format(controller.movement_position)
             return [MOVE, self.move_times]
 
         def done(self):
             return True
 
-    # update using sensor data
-    class _UpdateMovementPosition(object):
+    class _UpdateMovementPositionWithGps(object):
         def __init__(self, controller):
             self.controller = controller
+            self.init = False;
+            self.samples = []
 
         def act(self):
+            if not self.init:
+                self.init = True;
+                #todo, cache gps samples
+            return [SENSE_GPS]
+        def done(self):
+            controller = self.controller
+            self.samples.append(controller.last_gps_read)
+            num_samples = len(self.samples)
+            # from highest to lowest-when equal highest takes precenence
+            if (num_samples >= controller.gps_samples):
+
+                sum = 0,0
+                for sample in self.samples:
+                    sum = sum[0] + sample[0], sum[1] + sample[1]
+
+                controller.movement_position = sum[0]/num_samples, sum[1]/num_samples
+
+                print "UpdateMPosWithGps: samples {}, move_pos{}".format(num_samples, controller.movement_position)
+                return True
             return None
 
+    class _UpdateMovementPositionWithSonar(object):
+        def __init__(self, controller):
+            self.controller = controller
+            self.init = False;
+            self.samples = []
+
+        def act(self):
+            if not self.init:
+                self.init = True;
+                #todo, cache sonar samples
+            return [SENSE_SONAR]
+
         def done(self):
-            return True
+            controller = self.controller
+            self.samples.append(controller.last_sonar_read)
+            num_samples = len(self.samples)
+            # from highest to lowest-when equal highest takes precenence
+            if (num_samples >= controller.distance_samples_highest):
+                #TODO: calc movement position from sonar
+                distance = sum(self.samples)/num_samples
+                print "UpdateMPosWithSonar: samples {}, move_pos{}".format(num_samples, controller.movement_position)
 
-
-    # class _CheckMoveDistance(object):
-    #     def __init__(self, controller):
-    #         self.controller = controller
-    #         self.samples = []
-    #         self.distance = None
-    #     def act(self):
-    #         return [SENSE_SONAR]
-    #     def done(self):
-    #         controller = self.controller
-    #         self.samples.append(controller.last_sonar_read)
-    #         num_samples = len(self.samples)
-    #         # from highest to lowest-when equal highest takes precenence
-    #         if (num_samples >= controller.distance_samples_highest):
-    #             print "CheckMoveDistance:{}".format(str(self.controller))
-    #             print "-samples:{}".format(num_samples)
-    #             self.distance = sum(self.samples)/num_samples
-    #             print "-distance:{}".format(self.distance)
-    #             return self.distance
-    #         return None
+                return True
+            return None
 
 
     # called once per visit
@@ -372,7 +416,7 @@ class PRC(RobotController):
                 print "-high-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
                 print "-distance:{}".format(distance)
-                distance -= 0.5 + PRC.POSITION_MARGIN
+                distance -= 0.5 + controller.get_pos_inprecision()
                 fields = int(distance + 0.5)
                 print "-fields:{}".format(fields)
                 controller.mark_clear_fields(fields, True)
@@ -392,7 +436,7 @@ class PRC(RobotController):
             return None
 
     def get_clear_fields(self, distance, precision):
-        distance -= 0.5 + PRC.POSITION_MARGIN + precision
+        distance -= 0.5 + self.get_pos_inprecision() + precision
         return int(math.floor(distance))
 
     def mark_clear_fields(self, dist, mark_wall):
@@ -433,17 +477,6 @@ class PRC(RobotController):
             print "sim angle {} real angle {} angle error {}".format(controller.movement_angle, controller.theoretical_angle, controller.angle_error)
             return True
 
-    class _CheckDistanceCommand(object):
-        def __init__(self, controller):
-            self.controller = controller
-
-        def act(self):
-            return [SENSE_SONAR]
-
-        def done(self):
-            self.controller.distance_to_obstacle = self.controller.last_sonar_read
-            return self.controller.last_sonar_read
-
     class _CheckFieldCommand(object):
         def __init__(self, controller):
             self.controller = controller
@@ -454,17 +487,6 @@ class PRC(RobotController):
         def done(self):
             self.controller.current_field = self.controller.last_field_read
             return self.controller.last_field_read
-
-    class _CheckPositionCommand(object):
-        def __init__(self, controller):
-            self.controller = controller
-
-        def act(self):
-            return [SENSE_GPS]
-
-        def done(self):
-            self.controller.theoretical_position = self.controller.last_gps_read
-            return self.controller.last_gps_read
 
     class _CheckGoal(object):
         def __init__(self, controller):
