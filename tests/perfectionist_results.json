@@ -1,6 +1,6 @@
 [
     {
-        "time_elapsed": 0.6955715570418536, 
+        "time_elapsed": 1.893654927578002, 
         "test_id": 1, 
         "time_consumed_robot": 4.0, 
         "goal_achieved": true
@@ -8,37 +8,55 @@
     {
         "time_elapsed": 49.03743999992688, 
         "test_id": 2, 
-        "time_consumed_robot": 485.0, 
+        "time_consumed_robot": 466.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 291.53744000073556, 
+        "time_elapsed": 290.83744000073517, 
         "test_id": 3, 
-        "time_consumed_robot": 628.0, 
+        "time_consumed_robot": 645.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 996.2374399969486, 
+        "time_elapsed": 1006.0374399969509, 
         "test_id": 4, 
         "time_consumed_robot": 698.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1005.5465583697745, 
+        "time_elapsed": 1005.5163835921396, 
         "test_id": 5, 
-        "time_consumed_robot": 693.0, 
+        "time_consumed_robot": 759.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 290.5552751037804, 
+        "time_elapsed": 291.1104894630059, 
         "test_id": 6, 
-        "time_consumed_robot": 581.0, 
+        "time_consumed_robot": 629.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1009.9970162900354, 
+        "time_elapsed": 1002.1029251435464, 
         "test_id": 7, 
-        "time_consumed_robot": 728.0, 
+        "time_consumed_robot": 695.0, 
+        "goal_achieved": true
+    }, 
+    {
+        "time_elapsed": 1353.6874539233847, 
+        "test_id": 8, 
+        "time_consumed_robot": 983.0, 
+        "goal_achieved": true
+    }, 
+    {
+        "time_elapsed": 1356.552406427812, 
+        "test_id": 9, 
+        "time_consumed_robot": 2786.0, 
+        "goal_achieved": true
+    }, 
+    {
+        "time_elapsed": 1003.8337682349529, 
+        "test_id": 10, 
+        "time_consumed_robot": 777.0, 
         "goal_achieved": true
     }
 ]

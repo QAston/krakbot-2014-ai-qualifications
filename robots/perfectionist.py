@@ -105,6 +105,8 @@ class PRC(RobotController):
         self.distance_samples_medium = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_MEDIUM, sonar_noise) + 1
         self.distance_samples_detect_wall = num_samples_needed(PRC.DISTANCE_CERTAINTY, self.detect_wall_precision, sonar_noise) + 1
 
+        self.gps_cache = []
+        self.sonar_cache = []
 
         print "Info: drive_diff: {}, update_position_precision: {}, detect_wall_precision {}, drive_precision {}".format(self.drive_max_diff,
             self.update_position_precision, self.detect_wall_precision, self.drive_precision)
@@ -165,6 +167,13 @@ class PRC(RobotController):
 
     def get_gps_time(self):
         return self.gps_delay
+
+    def clear_position_cache(self):
+        self.gps_cache[:] = []
+        self.sonar_cache[:] = []
+
+    def clear_distance_cache(self):
+        self.sonar_cache[:] = []
 
     def __str__(self):
         return "PCR[pos:{} angl:{}]".format(self.theoretical_position, self.theoretical_angle)
@@ -314,18 +323,15 @@ class PRC(RobotController):
             return [MOVE, self.move_times]
 
         def done(self):
+            self.controller.clear_position_cache()
             return True
 
     class _UpdateMovementPositionWithGps(object):
         def __init__(self, controller):
             self.controller = controller
-            self.init = False;
-            self.samples = []
+            self.samples = controller.gps_cache
 
         def act(self):
-            if not self.init:
-                self.init = True;
-                #todo, cache gps samples
             return [SENSE_GPS]
         def done(self):
             controller = self.controller
@@ -347,13 +353,9 @@ class PRC(RobotController):
     class _UpdateMovementPositionWithSonar(object):
         def __init__(self, controller):
             self.controller = controller
-            self.init = False;
-            self.samples = []
+            self.samples = controller.sonar_cache
 
         def act(self):
-            if not self.init:
-                self.init = True;
-                #todo, cache sonar samples
             return [SENSE_SONAR]
 
         def done(self):
@@ -424,7 +426,7 @@ class PRC(RobotController):
     class _CheckWall(object):
         def __init__(self, controller):
             self.controller = controller
-            self.samples = []
+            self.samples = controller.sonar_cache
 
         def act(self):
             return [SENSE_SONAR]
@@ -498,6 +500,7 @@ class PRC(RobotController):
 
             controller.angle_error = angle_diff(controller.movement_angle, controller.theoretical_angle)
             #print "sim angle {} real angle {} angle error {}".format(controller.movement_angle, controller.theoretical_angle, controller.angle_error)
+            self.controller.clear_distance_cache()
             return True
 
     class _CheckFieldCommand(object):
