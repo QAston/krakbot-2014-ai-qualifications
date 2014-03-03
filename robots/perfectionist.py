@@ -4,6 +4,7 @@
 # optionally uses gps when driving/steering fails
 #
 #todo: optimize this code:P
+#todo: compare avg speeds with other algorithms to choose the fastest for given config
 #
 from defines import *
 from robot_controller import RobotController
@@ -53,7 +54,7 @@ class PRC(RobotController):
 
         #scipy doesn't tolerate 0 noise
         if distance_noise > 0:
-            self.drive_max_diff = stats.norm.interval(0.95, loc=TICK_MOVE, scale=distance_noise)[1]
+            self.drive_max_diff = stats.norm.interval(0.98, loc=TICK_MOVE, scale=distance_noise)[1]
         else:
             self.drive_max_diff = TICK_MOVE
 
@@ -546,16 +547,20 @@ def simulate_turn(turn_times, steering_noise, orientation):
     return orientation
 
 def simulate_move(move_times, distance_noise, position, orientation):
+    cos_ort = math.cos(orientation)
+    sin_ort = math.sin(orientation)
     for i in xrange(move_times):
         distance = max(0.0,random.gauss(TICK_MOVE, distance_noise))
-        position = position[0] + distance * math.cos(orientation), position[1] + distance * math.sin(orientation)
+        position = position[0] + distance * cos_ort, position[1] + distance * sin_ort
     return position
 
 def calculate_law_of_big_numbers_error(move_times, distance_noise, position, orientation):
+    cos_ort = math.cos(orientation)
+    sin_ort = math.sin(orientation)
     for i in xrange(move_times):
         # add negative error to simulator position, so in error calc it shows up positive
         distance = -min(0.0,random.gauss(TICK_MOVE, distance_noise))
-        position = position[0] + distance * math.cos(orientation), position[1] + distance * math.sin(orientation)
+        position = position[0] + distance * cos_ort, position[1] + distance * sin_ort
     return position
 
 # calcs signed diff between 2 angles
