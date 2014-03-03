@@ -5,6 +5,7 @@
 #
 #todo: optimize this code:P
 #todo: compare avg speeds with other algorithms to choose the fastest for given config
+#todo: infer angle based on movement with gps
 #
 from defines import *
 from robot_controller import RobotController
@@ -40,7 +41,6 @@ class PRC(RobotController):
         self.theoretical_angle = starting_position[2] # in radians
 
         self.current_field = MAP_START_POSITION, 0
-        self.distance_to_obstacle = None
 
         self.map = {}
         self.times_visited = {}
@@ -74,9 +74,8 @@ class PRC(RobotController):
         self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision, sonar_noise) + 1
         self.gps_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision, gps_noise) + 1
 
-        #TODO: verify this constant!
         # check if we need position corrections
-        if self.drive_max_diff < 0.05:
+        if self.drive_max_diff - TICK_MOVE <= 0.0003 and steering_noise <= 0.000003: # just tiny steering changes
             self.update_movement_position_class = PRC._EmptyCommand
             self.update_position_precision = 0.0
         else:

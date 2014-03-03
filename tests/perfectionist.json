@@ -108,5 +108,17 @@
         "speed":  5.0,
         "turning_speed": 100.0,
         "simulation_time_limit":100000.0
+    },
+    // boundary values for ignoring all sensors
+    {
+        "map": "maps/m1.map",
+        "steering_noise": 0.000003,
+        "sonar_noise": 1.0,
+        "measurement_noise": 0.0,
+        "gps_delay": 0.0,
+        "distance_noise": 0.0001,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
     }
 ]
