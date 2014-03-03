@@ -20,8 +20,8 @@ class PRC(RobotController):
 
     POSITION_CERTAINTY = 0.99
 
-    MIN_POSITION_PRECISION = 0.3 # how much from theoretical position we can be for alorithm to work
-    MAX_ALLOWED_DRIVE_DIFF = 0.4
+    MIN_POSITION_PRECISION = 0.2 # how much from theoretical position we can be for alorithm to work
+    MAX_ALLOWED_DRIVE_DIFF = 0.3
 
     def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
         self.starting_position = starting_position
@@ -98,7 +98,7 @@ class PRC(RobotController):
                 else:
                     self.update_position_precision = min(self.update_position_precision, stats.norm.interval(PRC.POSITION_CERTAINTY, loc=0.0, scale=sonar_noise)[1])
 
-        self.detect_wall_precision = 0.1 + PRC.MIN_POSITION_PRECISION - self.update_position_precision
+        self.detect_wall_precision = 0.2 + PRC.MIN_POSITION_PRECISION - self.update_position_precision
 
         #distance checks
         self.distance_samples_low = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_LOW, sonar_noise) + 1
@@ -106,7 +106,7 @@ class PRC(RobotController):
         self.distance_samples_detect_wall = num_samples_needed(PRC.DISTANCE_CERTAINTY, self.detect_wall_precision, sonar_noise) + 1
 
 
-        print "Info: drive_diff: {}, update_position_precision: {}, detect_wall_precision {}, drive_precision{}".format(self.drive_max_diff,
+        print "Info: drive_diff: {}, update_position_precision: {}, detect_wall_precision {}, drive_precision {}".format(self.drive_max_diff,
             self.update_position_precision, self.detect_wall_precision, self.drive_precision)
 
         #TODO: turn to right angle at the beginning of the ride becase we start at starting_position[2] which may not be multiplier of Pi/2
@@ -181,7 +181,7 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
-            print "Select Next:{}".format(str(self.controller))
+            #print "Select Next:{}".format(str(self.controller))
             controller = self.controller
             c = controller.commands
 
@@ -272,7 +272,7 @@ class PRC(RobotController):
         def act(self):
             controller = self.controller
             if not self.init:
-                print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
+                #print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
                 self.init = True
                 pos = controller.theoretical_position
                 orientation = controller.theoretical_angle
@@ -302,7 +302,7 @@ class PRC(RobotController):
 
         def act(self):
             controller = self.controller
-            print "MoveTicks {} ticks: {}".format(str(controller), self.move_times)
+            #print "MoveTicks {} ticks: {}".format(str(controller), self.move_times)
             #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
             controller.movement_position = simulate_move(self.move_times, 0, controller.movement_position, controller.movement_angle)
 
@@ -310,7 +310,7 @@ class PRC(RobotController):
             controller.movement_position = calculate_law_of_big_numbers_error(self.move_times,
                 controller.distance_noise, controller.movement_position, controller.movement_angle)
 
-            print "-movement_position: {}".format(controller.movement_position)
+            #print "-movement_position: {}".format(controller.movement_position)
             return [MOVE, self.move_times]
 
         def done(self):
@@ -340,7 +340,7 @@ class PRC(RobotController):
 
                 controller.movement_position = sum[0]/num_samples, sum[1]/num_samples
 
-                print "UpdateMPosWithGps: samples {}, move_pos{}".format(num_samples, controller.movement_position)
+                #print "UpdateMPosWithGps: samples {}, move_pos{}".format(num_samples, controller.movement_position)
                 return True
             return None
 
@@ -364,7 +364,7 @@ class PRC(RobotController):
             if (num_samples >= controller.distance_samples_position):
                 #TODO: calc movement position from sonar
                 distance = sum(self.samples)/num_samples
-                print "UpdateMPosWithSonar: samples {}, move_pos{}".format(num_samples, controller.movement_position)
+                #print "UpdateMPosWithSonar: samples {}, move_pos{}".format(num_samples, controller.movement_position)
 
                 return True
             return None
@@ -439,7 +439,7 @@ class PRC(RobotController):
                 print "-high-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
                 print "-distance:{}".format(distance)
-                distance -= 0.5 + controller.get_pos_precision()
+                distance -= 0.5
                 fields = int(distance + 0.5)
                 print "-fields:{}".format(fields)
                 controller.mark_clear_fields(fields, True)
@@ -482,10 +482,10 @@ class PRC(RobotController):
         def act(self):
             controller = self.controller
 
-            print "turning {} angle by: {}".format(str(controller), self.angle)
+            #print "turning {} angle by: {}".format(str(controller), self.angle)
             turn_times = int((self.angle + controller.angle_error)/ TICK_ROTATE + 0.5)
             #controller.angle_error = self.angle - TICK_ROTATE * turn_times
-            #print "error: {}".format(controller.angle_error)
+            ##print "error: {}".format(controller.angle_error)
 
             #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
             controller.movement_angle = simulate_turn(turn_times, 0, controller.movement_angle)
@@ -497,7 +497,7 @@ class PRC(RobotController):
             controller.theoretical_angle = (controller.theoretical_angle + self.angle) % (2*math.pi)
 
             controller.angle_error = angle_diff(controller.movement_angle, controller.theoretical_angle)
-            print "sim angle {} real angle {} angle error {}".format(controller.movement_angle, controller.theoretical_angle, controller.angle_error)
+            #print "sim angle {} real angle {} angle error {}".format(controller.movement_angle, controller.theoretical_angle, controller.angle_error)
             return True
 
     class _CheckFieldCommand(object):
