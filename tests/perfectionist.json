@@ -54,6 +54,7 @@
         "turning_speed": 100.0,
         "simulation_time_limit":100000.0
     },
+    // correcting dist with gps
     {
         "map": "maps/m1.map",
         "steering_noise": 0.0000,
@@ -117,6 +118,29 @@
         "measurement_noise": 0.0,
         "gps_delay": 0.0,
         "distance_noise": 0.0001,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+    // correcting dist with sonar
+    {
+        "map": "maps/m1.map",
+        "steering_noise": 0.000002,
+        "sonar_noise": 0.0,
+        "measurement_noise": 10.0,
+        "gps_delay": 10.0,
+        "distance_noise": 0.1,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+    {
+        "map": "maps/m1.map",
+        "steering_noise": 0.000002,
+        "sonar_noise": 0.5,
+        "measurement_noise": 30.0,
+        "gps_delay": 10.0,
+        "distance_noise": 0.1,
         "speed":  5.0,
         "turning_speed": 100.0,
         "simulation_time_limit":100000.0

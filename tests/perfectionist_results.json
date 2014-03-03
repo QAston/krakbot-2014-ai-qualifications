@@ -1,62 +1,74 @@
 [
     {
-        "time_elapsed": 1.893654927578002, 
+        "time_elapsed": 22.699421324502588, 
         "test_id": 1, 
         "time_consumed_robot": 4.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 49.03743999992688, 
+        "time_elapsed": 48.13743999992822, 
         "test_id": 2, 
-        "time_consumed_robot": 466.0, 
+        "time_consumed_robot": 439.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 290.83744000073517, 
+        "time_elapsed": 290.53744000073544, 
         "test_id": 3, 
-        "time_consumed_robot": 645.0, 
+        "time_consumed_robot": 452.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1006.0374399969509, 
+        "time_elapsed": 1007.6374399970181, 
         "test_id": 4, 
-        "time_consumed_robot": 698.0, 
+        "time_consumed_robot": 572.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1005.5163835921396, 
+        "time_elapsed": 1007.0149146442184, 
         "test_id": 5, 
-        "time_consumed_robot": 759.0, 
+        "time_consumed_robot": 558.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 291.1104894630059, 
+        "time_elapsed": 289.7511812348789, 
         "test_id": 6, 
-        "time_consumed_robot": 629.0, 
+        "time_consumed_robot": 469.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1002.1029251435464, 
+        "time_elapsed": 1006.9004301776066, 
         "test_id": 7, 
-        "time_consumed_robot": 695.0, 
+        "time_consumed_robot": 541.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1353.6874539233847, 
+        "time_elapsed": 1370.3490585142806, 
         "test_id": 8, 
-        "time_consumed_robot": 983.0, 
+        "time_consumed_robot": 831.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1356.552406427812, 
+        "time_elapsed": 1370.462278822997, 
         "test_id": 9, 
-        "time_consumed_robot": 2786.0, 
+        "time_consumed_robot": 2940.0, 
         "goal_achieved": true
     }, 
     {
-        "time_elapsed": 1003.8337682349529, 
+        "time_elapsed": 1006.5342221964632, 
         "test_id": 10, 
-        "time_consumed_robot": 777.0, 
+        "time_consumed_robot": 563.0, 
+        "goal_achieved": true
+    }, 
+    {
+        "time_elapsed": 240.59782776710682, 
+        "test_id": 11, 
+        "time_consumed_robot": 509.0, 
+        "goal_achieved": true
+    }, 
+    {
+        "time_elapsed": 42652.43087368127, 
+        "test_id": 12, 
+        "time_consumed_robot": 4958.0, 
         "goal_achieved": true
     }
 ]
