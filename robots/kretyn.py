@@ -55,10 +55,10 @@ class OmitCollisions(RobotController):
 
         ruch = suma/odczyty;
 
-        if ruch < 0.4:
+        if ruch < 3:
             self.phase = OmitCollisions.STATE_LOOK_FOR_SPACE
         else:
-            self.command_queue.append([MOVE, (suma/odczyty)])
+            self.command_queue.append([MOVE, (suma/odczyty)-2.97])
             self.phase = OmitCollisions.STATE_FORWARD
 
     def on_sense_field(self, field_type, field_parameter):
