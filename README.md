@@ -6,12 +6,6 @@
 * 0225✔ - Wszystko dziala poprzez commit i zmiane kodu programu
 * 0226✔ - Generator map
 * 0226✔ - Prosty tester robota
-* 0227 - Obsluga ruchu robotem
-* 0228 - Obsluga S1
-* 0228 - Obsluga S2
-* 0228 - Obsluga S3
-* 0301 - Algorytm ruchu robota
-* 0302 - Pierwszy gotowy program ruchu
 * 0309 - Dead line
 
 ## Coding style
@@ -22,11 +16,21 @@ M.in. 4 spacje intendacji, nazwa_funkcji, NazwaKlasy
 UWAGA - nie edytujemy nic z folderu krak, jest to submoduł git i zmiany nie bedą widoczne u innych!!!
 
 ## Todo
+* napisać algorytmy robotów dla różnych poziomów dokładności sensorów:
+    * perfectionist - 80% complete - radzi sobie w przypadku ultra-precyzyjnego ruchu (bez sensorów), oraz przy drobnych błedach w ruchu(sonar przy zakłuceniach distance_noise, gps w pozostałych)
+        * trzeba napisać lepszy algorytm przeszukiwania mapy
+        * lepsza heurystyka poruszania sie po mapie
+        * dodać wykrywanie sytuacji w których robot sobie nie radzi aby można było zmienić algorytm
+        * zoptymalizować kod
+    * kretyn - ?? complete - radzi sobie w przypadku gdy nic nie działa jak trzeba
+    * navigator - 0% complete - radzi sobie w przypadku średniego zakłucenia na wszystkich odczytach
+        * ważny algorytm, pokrywa >50% możliwych kombinacji odczytów!!!!
 
-* potrzebny jest skrypt który bedzie wykonywał testy robota na podanych mapach i sprawdzał czy czasy po ostatniej zmianie sie nie pogorszyły
-* potrzebny jest inny generator map - obecny generuje tylko labirynty
-* trzeba napisać dobry program robota
-    * potrzebne są jakieś metody probabilistyczne do radzenia sobie z niepewnością odczytów sensorów
+* zintegrować algorytmy
+    * trzeba napisać dynamiczne przełączanie sie pomiedzy algorytmami
+        *robot zaczyna jako perfectionist, by gdy już nie jest czegoś pewnien bądz walnął w ściane przełączyć sie na navigator
+
+* przetestować wszystko
 * przejść kwalifikacje
 
 ## Pomysły na algorytm robota
