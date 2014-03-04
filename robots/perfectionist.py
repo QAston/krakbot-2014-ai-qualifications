@@ -19,6 +19,8 @@ class PRC(RobotController):
 
     POSITION_CERTAINTY = 0.99
 
+    ANGLE_GPS_CALIBRATE_DIST = 0.1
+
     MIN_POSITION_PRECISION = 0.2 # how much from theoretical position we can be for alorithm to work
     MAX_ALLOWED_DRIVE_DIFF = 0.3
 
@@ -78,6 +80,17 @@ class PRC(RobotController):
 
         self.steer_precision = self.steer_max_diff - TICK_ROTATE
 
+        # todo: verify constants
+        self.gps_samples_calibrate_angle = num_samples_needed(PRC.POSITION_CERTAINTY, 0.01, gps_noise) + 1
+        # todo: verify constants - calibration is expensive on gps, so it may be better to skip it if gps takes too long
+        self.enable_gps_angle_calibration = steering_noise > 0.0001
+
+        print "self.enable_gps_angle_calibration:{}".format(self.enable_gps_angle_calibration)
+
+        self.angle_dirty = False
+        self.angle_change_position = self.movement_position
+        self.movement_angle_estimate_updated = False
+
         # check if we need position corrections
         if self.drive_max_diff - TICK_MOVE <= 0.0003 and steering_noise <= 0.000003: # just tiny steering changes
             self.update_movement_position_class = PRC._EmptyCommand
@@ -87,6 +100,7 @@ class PRC(RobotController):
             if (not self.has_perfect_steering or
                     self.gps_samples_position * self.get_gps_time() <= self.distance_samples_position * self.get_sonar_time()):
 
+                #todo: it may be better to skip gps in some cases because reading it may be expensive
                 self.update_movement_position_class = PRC._UpdateMovementPositionWithGps
                 # update with real gps precision if better
                 if gps_noise == 0.0:
@@ -182,8 +196,12 @@ class PRC(RobotController):
         self.gps_cache[:] = []
         self.sonar_cache[:] = []
 
-    def clear_distance_cache(self):
+    def clear_angle_cache(self):
         self.sonar_cache[:] = []
+        if self.enable_gps_angle_calibration:
+            self.angle_dirty = True
+        self.angle_change_position = self.movement_position
+        self.movement_angle_estimate_updated = False
 
     def get_num_fields_to_next_wall(self):
         curr = self.get_forward_position()
@@ -304,7 +322,7 @@ class PRC(RobotController):
                 pos = controller.theoretical_position
                 orientation = controller.theoretical_angle
                 self.target_position = pos[0] + self.distance * math.cos(orientation), pos[1] + self.distance * math.sin(orientation)
-                #print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
+                print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
 
             vector = (self.target_position[0] - controller.movement_position[0],
                                              self.target_position[1] - controller.movement_position[1])
@@ -314,7 +332,28 @@ class PRC(RobotController):
 
             move_times = int(max(dist, 0.0)/controller.drive_max_diff + 0.5)
             if move_times >= 1:
-                controller.commands = [PRC._MoveTicks(controller, move_times), controller.update_movement_position_class(controller, controller.movement_position), self] + controller.commands
+                c = []
+                calibrate_move_times = int(PRC.ANGLE_GPS_CALIBRATE_DIST/controller.drive_max_diff + 0.5)
+                #only try calibrate if there's enough room
+                try_calibrate = dist >= PRC.ANGLE_GPS_CALIBRATE_DIST and controller.angle_dirty
+                if not controller.movement_angle_estimate_updated and try_calibrate:
+                    c.append(PRC._MoveTicks(controller, calibrate_move_times))
+                elif controller.movement_angle_estimate_updated and try_calibrate:
+
+                    diff = angle_diff(controller.movement_angle, controller.theoretical_angle)
+                    turn_times = int((diff)/ TICK_ROTATE + 0.5)
+                    print "correction ticks: {}".format(turn_times)
+                    if turn_times != 0:
+                        c.append(PRC._TurnAngleTicks(controller, turn_times))
+                        c.append(PRC._MoveTicks(controller, calibrate_move_times))
+                    else:
+                        controller.angle_dirty = False
+                        c.append(PRC._MoveTicks(controller, move_times))
+                else:
+                    c.append(PRC._MoveTicks(controller, move_times))
+                c.append(controller.update_movement_position_class(controller))
+                c.append(self)
+                controller.commands = c + controller.commands
             else:
                 controller.theoretical_position = self.target_position
 
@@ -348,10 +387,9 @@ class PRC(RobotController):
             return True
 
     class _UpdateMovementPositionWithGps(object):
-        def __init__(self, controller, last_position):
+        def __init__(self, controller):
             self.controller = controller
             self.samples = controller.gps_cache
-            self.last_position = last_position
 
         def act(self):
             return [SENSE_GPS]
@@ -359,8 +397,19 @@ class PRC(RobotController):
             controller = self.controller
             self.samples.append(controller.last_gps_read)
             num_samples = len(self.samples)
+            if (num_samples >= controller.gps_samples_calibrate_angle):
+                sum = 0,0
+                for sample in self.samples:
+                    sum = sum[0] + sample[0], sum[1] + sample[1]
 
-            if (num_samples >= controller.gps_samples_position):
+                controller.movement_position = sum[0]/num_samples, sum[1]/num_samples
+                vector = controller.movement_position[0] - controller.angle_change_position[0], controller.movement_position[1] - controller.angle_change_position[1]
+                if vector_length(vector) >= PRC.ANGLE_GPS_CALIBRATE_DIST:
+                    controller.movement_angle = math.atan2(vector[1], vector[0])
+                    controller.movement_angle_estimate_updated = True
+                return True
+
+            elif ((not controller.angle_dirty) and num_samples >= controller.gps_samples_position):
 
                 sum = 0,0
                 for sample in self.samples:
@@ -373,7 +422,7 @@ class PRC(RobotController):
             return None
 
     class _UpdateMovementPositionWithSonar(object):
-        def __init__(self, controller, last_position):
+        def __init__(self, controller):
             self.controller = controller
             self.samples = controller.sonar_cache
             if (not controller.has_perfect_steering):
@@ -479,7 +528,7 @@ class PRC(RobotController):
 
             # for perfect steering always use precise dist check
             elif (not controller.has_perfect_steering
-                    and (num_samples == controller.distance_samples_medium or num_samples == controller.distance_samples_low)):
+                    and (num_samples >= controller.distance_samples_medium or num_samples >= controller.distance_samples_low)):
                 #print "Check wall:{}".format(str(self.controller))
                 #print "-med, low-samples:{}".format(num_samples)
                 distance = sum(self.samples)/num_samples
@@ -548,7 +597,7 @@ class PRC(RobotController):
             controller.movement_angle = simulate_turn(self.turn_times, 0, controller.movement_angle)
             return [TURN, self.turn_times]
         def done(self):
-            self.controller.clear_distance_cache()
+            self.controller.clear_angle_cache()
             #print "movement_angle {}".format(controller.movement_angle)
             return True
 
