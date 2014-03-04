@@ -3,11 +3,6 @@
 # uses distance sensor to see obstacles - can work with max noise
 # optionally uses gps when driving/steering fails
 #
-#todo: optimize this code:P
-#todo: compare avg speeds with other algorithms to choose the fastest for given config
-#todo: infer angle based on movement with gps
-#todo: use better heuristic strategy for this robot
-#  for example - stop turning on first field found?
 #
 from defines import *
 from robot_controller import RobotController
@@ -63,8 +58,6 @@ class PRC(RobotController):
         if self.drive_max_diff - TICK_MOVE >= PRC.MAX_ALLOWED_DRIVE_DIFF:
             raise ValueError("This kind of robot won't work with so big diff in movement")
 
-        self.angle_error = 0.0
-
         #CALCULATE SENSOR PRECISIONS
 
         self.drive_precision = (self.drive_max_diff - TICK_MOVE)  / 2
@@ -78,12 +71,18 @@ class PRC(RobotController):
 
         self.has_perfect_steering = steering_noise <= 0.000002
 
+        if steering_noise > 0.0:
+            self.steer_max_diff = stats.norm.interval(0.98, loc=TICK_ROTATE, scale=steering_noise)[1]
+        else:
+            self.steer_max_diff = TICK_ROTATE
+
+        self.steer_precision = self.steer_max_diff - TICK_ROTATE
+
         # check if we need position corrections
         if self.drive_max_diff - TICK_MOVE <= 0.0003 and steering_noise <= 0.000003: # just tiny steering changes
             self.update_movement_position_class = PRC._EmptyCommand
             self.update_position_precision = 0.0
         else:
-            #todo: prefer gps for big steering_noise
             # gps better than sonar
             if (not self.has_perfect_steering or
                     self.gps_samples_position * self.get_gps_time() <= self.distance_samples_position * self.get_sonar_time()):
@@ -315,7 +314,7 @@ class PRC(RobotController):
 
             move_times = int(max(dist, 0.0)/controller.drive_max_diff + 0.5)
             if move_times >= 1:
-                controller.commands = [PRC._MoveTicks(controller, move_times), controller.update_movement_position_class(controller), self] + controller.commands
+                controller.commands = [PRC._MoveTicks(controller, move_times), controller.update_movement_position_class(controller, controller.movement_position), self] + controller.commands
             else:
                 controller.theoretical_position = self.target_position
 
@@ -349,9 +348,10 @@ class PRC(RobotController):
             return True
 
     class _UpdateMovementPositionWithGps(object):
-        def __init__(self, controller):
+        def __init__(self, controller, last_position):
             self.controller = controller
             self.samples = controller.gps_cache
+            self.last_position = last_position
 
         def act(self):
             return [SENSE_GPS]
@@ -373,7 +373,7 @@ class PRC(RobotController):
             return None
 
     class _UpdateMovementPositionWithSonar(object):
-        def __init__(self, controller):
+        def __init__(self, controller, last_position):
             self.controller = controller
             self.samples = controller.sonar_cache
             if (not controller.has_perfect_steering):
@@ -514,28 +514,44 @@ class PRC(RobotController):
         def __init__(self, controller, angle):
             self.angle = angle
             self.controller = controller
+            self.target_angle = None
+            self.init = False
+            self.turn_angle_cmd = None
 
         def act(self):
             controller = self.controller
+            if not self.init:
+                self.init = True
+                self.target_angle = (controller.theoretical_angle + self.angle) % (2*math.pi)
 
+            change = angle_diff(controller.movement_angle, self.target_angle)
             #print "turning {} angle by: {}".format(str(controller), self.angle)
-            turn_times = int((self.angle + controller.angle_error)/ TICK_ROTATE + 0.5)
-            #controller.angle_error = self.angle - TICK_ROTATE * turn_times
-            ##print "error: {}".format(controller.angle_error)
-
-            #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
-            controller.movement_angle = simulate_turn(turn_times, 0, controller.movement_angle)
-
-            return [TURN, turn_times]
+            turn_times = int((change)/ TICK_ROTATE + 0.5)
+            self.turn_angle_cmd =PRC._TurnAngleTicks(controller, turn_times)
+            return self.turn_angle_cmd.act()
 
         def done(self):
+            self.turn_angle_cmd.done()
             controller = self.controller
-            controller.theoretical_angle = (controller.theoretical_angle + self.angle) % (2*math.pi)
-
-            controller.angle_error = angle_diff(controller.movement_angle, controller.theoretical_angle)
-            #print "sim angle {} real angle {} angle error {}".format(controller.movement_angle, controller.theoretical_angle, controller.angle_error)
-            self.controller.clear_distance_cache()
+            controller.theoretical_angle = self.target_angle
+            #print "-theoretical_angle {}".format(controller.theoretical_angle)
             return True
+
+    class _TurnAngleTicks(object):
+        def __init__(self, controller, turn_times):
+            self.controller = controller
+            self.turn_times = turn_times
+
+        def act(self):
+            controller = self.controller
+            #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
+            controller.movement_angle = simulate_turn(self.turn_times, 0, controller.movement_angle)
+            return [TURN, self.turn_times]
+        def done(self):
+            self.controller.clear_distance_cache()
+            #print "movement_angle {}".format(controller.movement_angle)
+            return True
+
 
     class _CheckFieldCommand(object):
         def __init__(self, controller):
@@ -559,7 +575,7 @@ class PRC(RobotController):
             return True
 
     class _EmptyCommand(object):
-        def __init__(self, controller):
+        def __init__(self, *args):
             pass
 
         def done(self):
