@@ -10,7 +10,7 @@ class OmitCollisions(RobotController):
 
     def init(self, starting_position, steering_noise, distance_noise, sonar_noise, measurement_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
 
-
+        self.distance_noise = distance_noise
         self.phase = OmitCollisions.STATE_LOOK_FOR_SPACE
         self.speed = speed
         self.turn_speed = turning_speed
@@ -25,7 +25,7 @@ class OmitCollisions(RobotController):
                 self.command_queue.append([TURN, int((pi/100.0) / TICK_ROTATE )]) # Rotate by small angle
                 self.command_queue.append([SENSE_SONAR])
                 self.command_queue.append([SENSE_GPS])
-                self.command_queue.append([WRITE_CONSOLE, "OmitCollisions bot reporting with "+str(self.x)+" "+str(self.y)])
+                #self.command_queue.append([WRITE_CONSOLE, "OmitCollisions bot reporting with "+str(self.x)+" "+str(self.y)])
             elif self.phase == MAP_GOAL:
                 self.command_queue.append([FINISH])
             else:
@@ -39,8 +39,10 @@ class OmitCollisions(RobotController):
         self.x = x
         self.y = y
 
+
     def on_sense_sonar(self, distance):
         self.last_distance = distance
+        self.command_queue.append([WRITE_CONSOLE, "Sonar: "+str(distance)])
         if distance < 0.315/distance:
             self.phase = OmitCollisions.STATE_LOOK_FOR_SPACE
         else:
