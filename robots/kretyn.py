@@ -22,14 +22,13 @@ class OmitCollisions(RobotController):
     def act(self):
         if len(self.command_queue) == 0:
             if self.phase == OmitCollisions.STATE_LOOK_FOR_SPACE:
-                self.command_queue.append([TURN, int((pi/100.0) / TICK_ROTATE )]) # Rotate by small angle
+                self.command_queue.append([TURN, int((pi/100.0) / TICK_ROTATE )])
                 self.command_queue.append([SENSE_SONAR])
                 self.command_queue.append([SENSE_GPS])
-                #self.command_queue.append([WRITE_CONSOLE, "OmitCollisions bot reporting with "+str(self.x)+" "+str(self.y)])
             elif self.phase == MAP_GOAL:
                 self.command_queue.append([FINISH])
             else:
-                self.command_queue.append([MOVE, 0.002])
+                
                 self.command_queue.append([SENSE_SONAR])
                 self.command_queue.append([SENSE_FIELD])
 
@@ -42,12 +41,25 @@ class OmitCollisions(RobotController):
 
     def on_sense_sonar(self, distance):
         self.last_distance = distance
-        self.command_queue.append([WRITE_CONSOLE, "Sonar: "+str(distance)])
-        if distance < 0.315/distance:
+        zlicz = 0
+        odczyty = 145
+        suma = 0
+        ruch = 0
+        self.command_queue.append([WRITE_CONSOLE, "Przeszkoda: "+str(distance)])
+        
+        while zlicz < odczyty:
+            if distance > 0:
+                self.command_queue.append([WRITE_CONSOLE, "Dis: "+str(distance)])
+                suma=suma+distance
+            zlicz=zlicz+1
+
+        ruch = suma/odczyty;
+
+        if ruch < 0.4:
             self.phase = OmitCollisions.STATE_LOOK_FOR_SPACE
         else:
+            self.command_queue.append([MOVE, (suma/odczyty)])
             self.phase = OmitCollisions.STATE_FORWARD
-
 
     def on_sense_field(self, field_type, field_parameter):
         if field_type == MAP_GOAL:
