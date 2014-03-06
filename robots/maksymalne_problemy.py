@@ -1,4 +1,3 @@
-
 from defines import *
 from robot_controller import RobotController
 import random
@@ -37,11 +36,11 @@ class OmitCollisions(RobotController):
         odczyty = 145
         suma = 0
         ruch = 0
-        self.command_queue.append([WRITE_CONSOLE, "Przeszkoda: "+str(distance)])
+        #self.command_queue.append([WRITE_CONSOLE, "Przeszkoda: "+str(distance)])
         
         while zlicz < odczyty:
             if distance > 0:
-                self.command_queue.append([WRITE_CONSOLE, "Dis: "+str(distance)])
+                #self.command_queue.append([WRITE_CONSOLE, "Dis: "+str(distance)])
                 suma=suma+distance
             zlicz=zlicz+1
 
