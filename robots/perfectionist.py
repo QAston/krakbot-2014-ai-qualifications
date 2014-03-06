@@ -9,7 +9,7 @@ from robot_controller import RobotController
 import math
 import random
 
-from scipy import stats;
+from scipy import stats
 
 class PRC(RobotController):
 
@@ -19,7 +19,7 @@ class PRC(RobotController):
 
     POSITION_CERTAINTY = 0.99
 
-    ANGLE_GPS_CALIBRATE_DIST = 0.1
+    ANGLE_GPS_CALIBRATE_DIST = 0.2
 
     MIN_POSITION_PRECISION = 0.2 # how much from theoretical position we can be for alorithm to work
     MAX_ALLOWED_DRIVE_DIFF = 0.3
@@ -336,21 +336,20 @@ class PRC(RobotController):
                 calibrate_move_times = int(PRC.ANGLE_GPS_CALIBRATE_DIST/controller.drive_max_diff + 0.5)
                 #only try calibrate if there's enough room
                 try_calibrate = dist >= PRC.ANGLE_GPS_CALIBRATE_DIST and controller.angle_dirty
-                if not controller.movement_angle_estimate_updated and try_calibrate:
-                    c.append(PRC._MoveTicks(controller, calibrate_move_times))
-                elif controller.movement_angle_estimate_updated and try_calibrate:
-
+                if controller.movement_angle_estimate_updated:
                     diff = angle_diff(controller.movement_angle, controller.theoretical_angle)
                     turn_times = int((diff)/ TICK_ROTATE + 0.5)
                     print "correction ticks: {}".format(turn_times)
                     if turn_times != 0:
                         c.append(PRC._TurnAngleTicks(controller, turn_times))
-                        c.append(PRC._MoveTicks(controller, calibrate_move_times))
+                        move_times = calibrate_move_times
                     else:
                         controller.angle_dirty = False
-                        c.append(PRC._MoveTicks(controller, move_times))
-                else:
-                    c.append(PRC._MoveTicks(controller, move_times))
+
+                if try_calibrate:
+                    move_times = calibrate_move_times
+
+                c.append(PRC._MoveTicks(controller, move_times))
                 c.append(controller.update_movement_position_class(controller))
                 c.append(self)
                 controller.commands = c + controller.commands
@@ -397,7 +396,7 @@ class PRC(RobotController):
             controller = self.controller
             self.samples.append(controller.last_gps_read)
             num_samples = len(self.samples)
-            if (num_samples >= controller.gps_samples_calibrate_angle):
+            if (controller.angle_dirty and num_samples >= controller.gps_samples_calibrate_angle):
                 sum = 0,0
                 for sample in self.samples:
                     sum = sum[0] + sample[0], sum[1] + sample[1]
