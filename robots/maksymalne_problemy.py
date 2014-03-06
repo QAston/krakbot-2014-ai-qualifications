@@ -12,17 +12,26 @@ class OmitCollisions(RobotController):
         self.distance_noise = distance_noise
         self.phase = OmitCollisions.STATE_LOOK_FOR_SPACE
         self.speed = speed
+        self.steering_noise = steering_noise
         self.sonar_noise = sonar_noise
         self.turn_speed = turning_speed
         self.command_queue = []
         self.last_distance = 0.0
+
+        self.strona_jazdy = 0
 
 
 
     def act(self):
         if len(self.command_queue) == 0:
             if self.phase == OmitCollisions.STATE_LOOK_FOR_SPACE:
-                self.command_queue.append([TURN, int(1 )])
+                if self.steering_noise > 0.7:
+                    self.command_queue.append([TURN, int(1)])
+                else:
+                    if self.strona_jazdy == 0:
+                        self.command_queue.append([TURN, int(8)])
+                    else:
+                        self.command_queue.append([TURN, int(-8)])
                 self.command_queue.append([SENSE_SONAR])
             elif self.phase == MAP_GOAL:
                 self.command_queue.append([FINISH])
@@ -36,9 +45,10 @@ class OmitCollisions(RobotController):
     def on_sense_sonar(self, distance):
         self.last_distance = distance
         zlicz = 0
-        odczyty = self.num_samples_needed(0.95, 0.275, self.sonar_noise)
+        odczyty = self.num_samples_needed(0.95, 0.2, self.sonar_noise)
         suma = 0
         ruch = 0
+        fast_recount = 0.2+self.distance_noise*2.8
         self.command_queue.append([WRITE_CONSOLE, "Num: "+str(odczyty)])
         
         while zlicz < odczyty:
@@ -48,10 +58,14 @@ class OmitCollisions(RobotController):
 
         ruch = suma/odczyty;
 
-        if ruch < 3:
+        if ruch < fast_recount:
             self.phase = OmitCollisions.STATE_LOOK_FOR_SPACE
         else:
-            self.command_queue.append([MOVE, (suma/odczyty)-2.999])
+            if self.strona_jazdy == 1:
+                self.strona_jazdy=0
+            else:
+                self.strona_jazdy=1
+            self.command_queue.append([MOVE, (suma/odczyty)-(fast_recount-0.001)])
             self.phase = OmitCollisions.STATE_FORWARD
 
     def on_sense_field(self, field_type, field_parameter):
