@@ -1,7 +1,7 @@
 from defines import *
 from robot_controller import RobotController
-import random
-from math import pi
+
+from math import *
 
 class OmitCollisions(RobotController):
     STATE_FORWARD = 0
@@ -45,7 +45,7 @@ class OmitCollisions(RobotController):
     def on_sense_sonar(self, distance):
         self.last_distance = distance
         zlicz = 0
-        odczyty = self.num_samples_needed(0.95, 0.2, self.sonar_noise)
+        odczyty = self.num_samples_needed(0.99, 0.176, self.sonar_noise)
         suma = 0
         ruch = 0
         fast_recount = 0.2+self.distance_noise*2.8
