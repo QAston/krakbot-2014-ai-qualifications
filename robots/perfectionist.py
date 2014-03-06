@@ -9,6 +9,8 @@ from robot_controller import RobotController
 import math
 import random
 
+import numpy as np
+from numpy import matlib
 from scipy import stats
 
 
@@ -701,6 +703,19 @@ def vector_length(v):
 # returns number of samples needed to estimate value to a certain certainty
 def num_samples_needed(required_certainty, error_margin, noise):
     return int((ltqnorm((required_certainty + 1.0) / 2) * noise / error_margin) ** 2 + 0.5)
+
+def kalman_measurement_update(state, uncertainty, measurement, measurement_function, measurement_uncertainty, i):
+    z = measurement.transpose()
+    y = z - measurement_function*state
+    s = measurement_function*uncertainty*measurement_function.transpose() + measurement_uncertainty
+    k = uncertainty*measurement_function.transpose()*S.inverse()
+    state = state+k*y
+    uncertainty = (i-k*measurement_function)*uncertainty
+
+def kalman_prediction(state, uncertainty, next_state_function, external_state_change):
+    state = next_state_function*state+external_state_change
+    uncertainty=next_state_function*uncertainty*next_state_function.transpose()
+    return state, uncertainty
 
 
 #inverse of cumulative function of normal distribution
