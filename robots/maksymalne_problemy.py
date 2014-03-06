@@ -22,7 +22,7 @@ class OmitCollisions(RobotController):
     def act(self):
         if len(self.command_queue) == 0:
             if self.phase == OmitCollisions.STATE_LOOK_FOR_SPACE:
-                self.command_queue.append([TURN, int((1) / TICK_ROTATE )])
+                self.command_queue.append([TURN, int(1 )])
                 self.command_queue.append([SENSE_SONAR])
             elif self.phase == MAP_GOAL:
                 self.command_queue.append([FINISH])
