@@ -46,8 +46,7 @@ class PRC(RobotController):
 
         self.map = {}
         self.times_visited = {}
-        self.commands = [self._CheckCurrent(self)]  # first command to run
-        self.command = PRC._EmptyCommand(self)
+
         self.map[self.theoretical_position] = self.current_field
 
         # the most correct position values we can get
@@ -60,8 +59,8 @@ class PRC(RobotController):
         else:
             self.drive_max_diff = TICK_MOVE
 
-        if self.drive_max_diff - TICK_MOVE >= PRC.MAX_ALLOWED_DRIVE_DIFF:
-            raise ValueError("This kind of robot won't work with so big diff in movement")
+        #if self.drive_max_diff - TICK_MOVE >= PRC.MAX_ALLOWED_DRIVE_DIFF:
+        #    raise ValueError("This kind of robot won't work with so big diff in movement")
 
         #CALCULATE SENSOR PRECISIONS
 
@@ -144,6 +143,12 @@ class PRC(RobotController):
             self.update_position_precision, self.detect_wall_precision, self.drive_precision)
 
         #TODO: turn to right angle at the beginning of the ride because we start at starting_position[2] which may not be multiplier of Pi/2
+
+        if steering_noise > 0.3 or distance_noise > 0.3:
+            self.commands = [self._KKRety(self)] #Uruchomienie kretyna
+        else:
+            self.commands = [self._CheckCurrent(self)]  # first command to run
+        self.command = PRC._EmptyCommand(self)
 
     def act(self):
         # run next command from list
@@ -655,6 +660,41 @@ class PRC(RobotController):
         def act(self):
             return None
 
+    class _KKRety(object):
+        def __init__(self, controller):
+            self.controller = controller
+            self.phase = 0
+            self.samples = controller.sonar_cache
+            self.odczyty = num_samples_needed(0.99, 0.174, controller.sonar_noise)
+            if self.odczyty < 1:
+                self.odczyty=5
+
+        def act(self):
+            return [SENSE_SONAR]
+
+        def done(self):
+            controller = self.controller
+            c = controller.commands
+            self.samples.append(controller.last_sonar_read)
+            c.append(controller._TurnAngleTicks(controller,int(1)))
+
+            ruch = 0
+            fast_recount = 3
+            if len(self.samples) < self.odczyty:
+                return None
+            else:
+                ruch = sum(self.samples)/self.odczyty
+                print ruch
+
+                if ruch < 0.2:
+                    c.append(controller._TurnAngleTicks(controller,int(15)))
+                else:
+                    zmienna = int(sum(self.samples)/self.odczyty-(0.2-0.001))
+                    c.append(controller._MoveTicks(controller, zmienna))
+                c.append(self)
+                return True
+
+            return None
 
 def get_front(pos, angle):
     dist = 1.0
@@ -708,7 +748,7 @@ def kalman_measurement_update(state, uncertainty, measurement, measurement_funct
     z = measurement.transpose()
     y = z - measurement_function*state
     s = measurement_function*uncertainty*measurement_function.transpose() + measurement_uncertainty
-    k = uncertainty*measurement_function.transpose()*S.inverse()
+    k = uncertainty*measurement_function.transpose()*s.inverse()
     state = state+k*y
     uncertainty = (i-k*measurement_function)*uncertainty
 

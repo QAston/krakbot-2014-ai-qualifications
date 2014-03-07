@@ -2,6 +2,8 @@ from defines import *
 from robot_controller import RobotController
 import math
 import random
+from numpy import matlib
+from scipy import *
 
 
 class OmitCollisions(RobotController):
@@ -48,6 +50,9 @@ class OmitCollisions(RobotController):
 
         return self.command_queue.pop(0)
 
+   #OLD FUNCTION
+
+
     def on_sense_sonar(self, distance):
         self.last_distance = distance
         zlicz = 0
@@ -58,8 +63,8 @@ class OmitCollisions(RobotController):
         suma = 0
         ruch = 0
         fast_recount = 0.2+self.distance_noise*2.8
-        self.command_queue.append([WRITE_CONSOLE, "Num: "+str(odczyty)])
-        
+        print "Odczyty: "+str(odczyty)
+
         while zlicz < odczyty:
             if distance > 0:
                 suma=suma+distance
