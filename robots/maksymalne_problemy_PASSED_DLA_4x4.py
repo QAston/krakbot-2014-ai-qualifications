@@ -35,9 +35,9 @@ class OmitCollisions(RobotController):
                     self.command_queue.append([TURN, int(1)])
                 else:
                     if self.strona_jazdy == 0:
-                        self.command_queue.append([TURN, int(15)])
+                        self.command_queue.append([TURN, int(190)])
                     else:
-                        self.command_queue.append([TURN, int(-12)])
+                        self.command_queue.append([TURN, int(-124)])
                 self.command_queue.append([SENSE_SONAR])
             elif self.phase == MAP_GOAL:
                 self.command_queue.append([FINISH])
