@@ -681,11 +681,15 @@ class PRC(RobotController):
             self.controller = controller
             self.phase = 0
             self.samples = controller.sonar_cache
-            self.odczyty = num_samples_needed(0.99, 0.4, controller.sonar_noise)
+            self.odczyty = num_samples_needed(0.99, 0.8, controller.sonar_noise)
             if self.odczyty < 1:
                 self.odczyty = 5
             self.mega_licznik = 0
             self.drive_max_diff = controller.drive_max_diff
+            self.kierunek_jazdy = 0
+            self.ile_razy = random.randint(7,25)
+            self.licznik_razy = 0
+            self.licznik_glowny = 0
 
         def act(self):
             return [SENSE_SONAR]
@@ -697,10 +701,10 @@ class PRC(RobotController):
             c.append(PRC._CheckGoal(self.controller))
             self.samples.append(controller.last_sonar_read)
 
-            #print self.samples[-1]
-            #print len(self.samples)
-            #print self.odczyty
-
+            self.licznik_glowny=self.licznik_glowny+1
+            if self.licznik_glowny > 40000:
+                self.mega_licznik=0
+                self.drive_max_diff=self.drive_max_diff/4
 
             if len(self.samples) < self.odczyty:
                 return None
@@ -714,14 +718,35 @@ class PRC(RobotController):
 
                 if ruch < self.drive_max_diff:
                     self.mega_licznik = self.mega_licznik +1
-                    c.append(controller._TurnAngleTicks(controller,int(1)))
-                    if self.mega_licznik % 35 == 0:
+                    kat_ruchu = max(1, int(((math.pi/4)-(controller.steering_noise*math.pi / 4))/TICK_ROTATE))
+
+
+                    if self.kierunek_jazdy == 0 and self.licznik_razy<=self.ile_razy:
+                        c.append(controller._TurnAngleTicks(controller,kat_ruchu))
+                        self.licznik_razy=self.licznik_razy+1
+
+                    if self.kierunek_jazdy == 1 and self.licznik_razy<=self.ile_razy:
+                        c.append(controller._TurnAngleTicks(controller,-kat_ruchu))
+                        self.licznik_razy=self.licznik_razy+1
+
+                    if self.licznik_razy==self.ile_razy:
+                        self.licznik_razy=0
+                        self.ile_razy=random.randint(13,50)
+                        if self.kierunek_jazdy==0:
+                            self.kierunek_jazdy=1
+                        else:
+                            self.kierunek_jazdy=0
+
+                    if self.mega_licznik % 10 == 0:
                         self.drive_max_diff=self.drive_max_diff/3
                         print "Reset!"+str(self.drive_max_diff)
                 else:
                     self.mega_licznik=0
                     self.drive_max_diff=controller.drive_max_diff
-                    c.append(controller._MoveTicks(controller, 1))
+
+                    dlugosc_ruchu = max(1, int((1-(controller.distance_noise*1))/self.drive_max_diff))
+                    print dlugosc_ruchu
+                    c.append(controller._MoveTicks(controller, dlugosc_ruchu))
                 c.append(self)
                 return True
 
