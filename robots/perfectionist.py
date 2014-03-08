@@ -26,6 +26,10 @@ class PRC(RobotController):
     MIN_POSITION_PRECISION = 0.2  # how much from theoretical position we can be for algorithm to work
     MAX_ALLOWED_DRIVE_DIFF = 0.3
 
+    AI_NONE = 0
+    AI_PERFECT = 1
+    AI_KRETYN = 2
+
     def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,
              gps_delay, execution_cpu_time_limit):
         self.starting_position = starting_position
@@ -47,6 +51,8 @@ class PRC(RobotController):
         self.map = {}
         self.times_visited = {}
 
+        self.current_ai = PRC.AI_NONE
+
         self.map[self.theoretical_position] = self.current_field
 
         # the most correct position values we can get
@@ -54,101 +60,111 @@ class PRC(RobotController):
         self.movement_angle = self.theoretical_angle
 
         #scipy doesn't tolerate 0 noise
-        if distance_noise > 0:
+        if distance_noise > 0.0:
             self.drive_max_diff = stats.norm.interval(0.98, loc=TICK_MOVE, scale=distance_noise)[1]
         else:
             self.drive_max_diff = TICK_MOVE
 
-        #if self.drive_max_diff - TICK_MOVE >= PRC.MAX_ALLOWED_DRIVE_DIFF:
-        #    raise ValueError("This kind of robot won't work with so big diff in movement")
-
-        #CALCULATE SENSOR PRECISIONS
-
         self.drive_precision = (self.drive_max_diff - TICK_MOVE) / 2
-        # calculate how much precision we need from sensors
-        self.update_position_precision = PRC.MIN_POSITION_PRECISION - self.drive_precision
-        #if self.update_position_precision < 0.0001:
-        #    raise ValueError("Cannot get enough precision for algorithm to work")
-
-        self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision,
-                                                            sonar_noise) + 1
-        self.gps_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision,
-                                                       gps_noise) + 1
-
-        self.has_perfect_steering = steering_noise <= 0.000002
 
         if steering_noise > 0.0:
             self.steer_max_diff = stats.norm.interval(0.98, loc=TICK_ROTATE, scale=steering_noise)[1]
         else:
             self.steer_max_diff = TICK_ROTATE
-
         self.steer_precision = self.steer_max_diff - TICK_ROTATE
-
-        # todo: verify constants
-        self.gps_samples_calibrate_angle = num_samples_needed(PRC.POSITION_CERTAINTY, 0.01, gps_noise) + 1
-        # todo: verify constants - calibration is expensive on gps, so it may be better to skip it if gps takes too long
-        self.enable_gps_angle_calibration = steering_noise > 0.0001
-
-        print "self.enable_gps_angle_calibration:{}".format(self.enable_gps_angle_calibration)
-
-        self.angle_dirty = False
-        self.angle_change_position = self.movement_position
-        self.movement_angle_estimate_updated = False
-
-        # check if we need position corrections
-        if self.drive_max_diff - TICK_MOVE <= 0.0003 and steering_noise <= 0.000003:  # just tiny steering changes
-            self.update_movement_position_class = PRC._EmptyCommand
-            self.update_position_precision = 0.0
-        else:
-            # gps better than sonar
-            if (not self.has_perfect_steering or
-                            self.gps_samples_position * self.get_gps_time() <= self.distance_samples_position * self.get_sonar_time()):
-
-                #todo: it may be better to skip gps in some cases because reading it may be expensive
-                self.update_movement_position_class = PRC._UpdateMovementPositionWithGps
-                # update with real gps precision if better
-                if gps_noise == 0.0:
-                    self.update_position_precision = 0.0
-                else:
-                    self.update_position_precision = min(self.update_position_precision,
-                                                         stats.norm.interval(PRC.POSITION_CERTAINTY, loc=0.0,
-                                                                             scale=gps_noise)[1])
-
-            # sonar better than gps
-            else:
-                self.update_movement_position_class = PRC._UpdateMovementPositionWithSonar
-                # update with real sonar precision if better
-                if gps_noise == 0.0:
-                    self.update_position_precision = 0.0
-                else:
-                    self.update_position_precision = min(self.update_position_precision,
-                                                         stats.norm.interval(PRC.POSITION_CERTAINTY, loc=0.0,
-                                                                             scale=sonar_noise)[1])
-
-        self.detect_wall_precision = 0.2 + PRC.MIN_POSITION_PRECISION - self.update_position_precision
-
-        #distance checks
-        self.distance_samples_low = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_LOW,
-                                                       sonar_noise) + 1
-        self.distance_samples_medium = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_MEDIUM,
-                                                          sonar_noise) + 1
-        self.distance_samples_detect_wall = num_samples_needed(PRC.DISTANCE_CERTAINTY, self.detect_wall_precision,
-                                                               sonar_noise) + 1
 
         self.gps_cache = []
         self.sonar_cache = []
 
-        print "Info: drive_diff: {}, update_position_precision: {}, detect_wall_precision {}, drive_precision {}".format(
-            self.drive_max_diff,
-            self.update_position_precision, self.detect_wall_precision, self.drive_precision)
-
         #TODO: turn to right angle at the beginning of the ride because we start at starting_position[2] which may not be multiplier of Pi/2
 
-        if steering_noise > 0.3 or distance_noise > 0.3:
+        self.change_ai(PRC.AI_PERFECT)
+
+    # changes ai to selected one, or dumber if selected can't be used
+    def change_ai(self, ai):
+        try:
+            if ai == PRC.AI_PERFECT:
+                if self.steering_noise > 0.3 or self.distance_noise > 0.3:
+                    raise ValueError("Too big error for perfect movement!")
+
+                if self.drive_max_diff - TICK_MOVE >= PRC.MAX_ALLOWED_DRIVE_DIFF:
+                    raise ValueError("This kind of robot won't work with so big diff in movement")
+
+                # calculate how much precision we need from sensors
+                self.update_position_precision = PRC.MIN_POSITION_PRECISION - self.drive_precision
+
+                if self.update_position_precision < 0.0001:
+                    raise ValueError("Cannot get enough precision for algorithm to work")
+
+                self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision,
+                                                                    self.sonar_noise) + 1
+                self.gps_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision,
+                                                               self.gps_noise) + 1
+
+                self.has_perfect_steering = self.steering_noise <= 0.000002
+
+                # check if we need position corrections
+                if self.drive_max_diff - TICK_MOVE <= 0.0003 and self.steering_noise <= 0.000003:  # just tiny steering changes
+                    self.update_movement_position_class = PRC._EmptyCommand
+                    self.update_position_precision = 0.0
+                else:
+                    # gps better than sonar
+                    if (not self.has_perfect_steering or
+                                    self.gps_samples_position * self.get_gps_time() <= self.distance_samples_position * self.get_sonar_time()):
+
+                        #todo: it may be better to skip gps in some cases because reading it may be expensive
+                        self.update_movement_position_class = PRC._UpdateMovementPositionWithGps
+                        # update with real gps precision if better
+                        if self.gps_noise == 0.0:
+                            self.update_position_precision = 0.0
+                        else:
+                            self.update_position_precision = min(self.update_position_precision,
+                                                                 stats.norm.interval(PRC.POSITION_CERTAINTY, loc=0.0,
+                                                                                     scale=self.gps_noise)[1])
+
+                    # sonar better than gps
+                    else:
+                        self.update_movement_position_class = PRC._UpdateMovementPositionWithSonar
+                        # update with real sonar precision if better
+                        if self.gps_noise == 0.0:
+                            self.update_position_precision = 0.0
+                        else:
+                            self.update_position_precision = min(self.update_position_precision,
+                                                                 stats.norm.interval(PRC.POSITION_CERTAINTY, loc=0.0,
+                                                                                     scale=self.sonar_noise)[1])
+
+                self.detect_wall_precision = 0.2 + PRC.MIN_POSITION_PRECISION - self.update_position_precision
+
+                #distance checks
+                self.distance_samples_low = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_LOW,
+                                                               self.sonar_noise) + 1
+                self.distance_samples_medium = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_MEDIUM,
+                                                                  self.sonar_noise) + 1
+                self.distance_samples_detect_wall = num_samples_needed(PRC.DISTANCE_CERTAINTY, self.detect_wall_precision,
+                                                                    self.sonar_noise) + 1
+
+                # todo: verify constants
+                self.gps_samples_calibrate_angle = num_samples_needed(PRC.POSITION_CERTAINTY, 0.01, self.gps_noise) + 1
+                # todo: verify constants - calibration is expensive on gps, so it may be better to skip it if gps takes too long
+                self.enable_gps_angle_calibration = self.steering_noise > 0.0001
+
+                #init gps helpers
+                self.angle_dirty = False
+                self.angle_change_position = self.movement_position
+                self.movement_angle_estimate_updated = False
+
+                self.commands = [self._CheckCurrent(self)]  # first command to run
+
+        except Exception:
+            ai = PRC.AI_KRETYN
+
+        if ai == PRC.AI_KRETYN:
             self.commands = [self._KKRety(self)] #Uruchomienie kretyna
-        else:
-            self.commands = [self._CheckCurrent(self)]  # first command to run
+
+        self.current_ai = ai
+
         self.command = PRC._EmptyCommand(self)
+
 
     def act(self):
         # run next command from list
@@ -216,10 +232,11 @@ class PRC(RobotController):
 
     def clear_angle_cache(self):
         self.sonar_cache[:] = []
-        if self.enable_gps_angle_calibration:
-            self.angle_dirty = True
-        self.angle_change_position = self.movement_position
-        self.movement_angle_estimate_updated = False
+        if self.current_ai == PRC.AI_PERFECT:
+            if self.enable_gps_angle_calibration:
+                self.angle_dirty = True
+            self.angle_change_position = self.movement_position
+            self.movement_angle_estimate_updated = False
 
     def get_num_fields_to_next_wall(self):
         curr = self.get_forward_position()
@@ -231,8 +248,7 @@ class PRC(RobotController):
         return i
 
     def __str__(self):
-        return "PCR[pos:{} angle:{}]".format(self.theoretical_position, self.theoretical_angle)
-
+        return "PRC[pos:{} angle:{}]".format(self.theoretical_position, self.theoretical_angle)
 
     # commands
     # fields of PRC because of the way simulator loads classes
@@ -762,7 +778,6 @@ def kalman_prediction(state, uncertainty, next_state_function, external_state_ch
     state = next_state_function*state+external_state_change
     uncertainty=next_state_function*uncertainty*next_state_function.transpose()
     return state, uncertainty
-
 
 #inverse of cumulative function of normal distribution
 def ltqnorm(p):
