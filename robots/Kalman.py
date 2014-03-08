@@ -1,94 +1,133 @@
+from numpy.matlib import matrix
 from defines import *
 from robot_controller import RobotController
 import math
 import random
 
-from numpy import matrix
 
 class KalmanFilter(RobotController):
-    """
-        Failure conditions:
-            *  Simulation time has exceeded the given maximum
-            *  The robot has exceeded the CPU time limit
-            *  The robot has exceeded the RAM limit (note: not controlled in your version)
-            *  The robot has reached the goal
-            *  The robot has thrown an exception
-            *  The robot has exceeded the maximum number of collisions (dependent on the map, but always more than 100)
-
-        Simulator params:
-        @param steering_noise - variance of steering in move
-        @param distance_noise - variance of distance in move
-        @param measurement_noise - variance of GPS measurement
-        @param map - map for the robot simulator representing the maze or file to map
-        @param init_position - starting position of the Robot (can be moved to map class) [x,y,heading]
-
-        @param speed - distance travelled by one move action (cannot be bigger than 0.5, or he could traverse the walls)
-        @param simulation_time_limit - limit in ms for whole robot execution (also with init)
-        @param collision_threshold - maximum number of collisions after which robot is destroyed
-        @param simulation_dt -  controlls simulation calculation intensivity
-
-        @param frame_dt - save frame every dt
-        @param robot - RobotController class that will be simulated in run procedure
-        """
     STATE_MEASURMENTS = 0;
     STATE_MOTION = 1;
-    
-    def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,gps_delay,execution_cpu_time_limit):
-        """
-            Specifications of the arguments:
-            * starting_position : tuple [x,y,angle], where x and y are accurate positions of the robot (we assume
-                upper-left corner is (0,0) and x runs vertically, whereas y runs horizontally) and angle which is an angle in radians
-                with respect to X axis
-            * steering_noise : sigma of gaussian noise applied to turning motion
-            * distance_noise : sigma of gaussian noise applied to forward motion
-            * sonar_noise : sigma of gaussian noise applied to sonar
-            * gps_noise : sigma of gaussian noise applied to gps measurements
-            * speed : speed of the robot in units/simulation_second (speed of the forward motion)
-            * turning_speed: turning speed of the robot in radians/simulation_second
-            * gps_delay : amount of simulation seconds consumed by a gps measurement
-            * execution_cpu_time_limit: total real running time that can be consumed by the robot in seconds
+    STATE_DECIDE_NEXT = 2;
+    STATE_SCANNING = 3;
 
-            Bounds:
-            * steering_noise : [0, 1.0]
-            * sonar_noise : [0, 1.0]
-            * gps_noise : [0, 50.0]
-            * distance_noise : [0, 1.0]
-            * simulation_time_limit : arbitrary
-            * speed : [0, 10]
-            * turning_speed : [0, 10]
-            * gps_delay : [0, 10.0]
-            """
+    def init(self, starting_position, steering_noise, distance_noise, sonar_noise, gps_noise, speed, turning_speed,
+             gps_delay, execution_cpu_time_limit):
+
         self.distance_noise = distance_noise
-        self.phase = KalmanFilter.STATE_MEASURMENTS
         self.speed = speed
-        self.turn_speed = turning_speed
+        self.turning_speed = turning_speed
         self.command_queue = []
         self.last_distance = 0.0
+        self.steering_noise = steering_noise
+        self.gps_noise = gps_noise
+        self.gps_delay = gps_delay
+
+        self.measurements = []
+        self.move_one = 1.0 / TICK_MOVE
+        self.dt = self.move_one * TICK_MOVE / speed
+
+        self.phase = KalmanFilter.STATE_DECIDE_NEXT
+        self.phase_helper = 0
+
+        self.actual_x = starting_position[0]
+        self.actual_y = starting_position[1]
+        self.actual_angle = starting_position[2]
+
+        self.mapa = {}
+        self.mapa[(self.actual_x, self.actual_y)] = 1
+
+        #macierze i wektory kalmana
+
+        self.X = matrix([[starting_position[0]], [starting_position[1]], [distance_noise], [distance_noise]])
+        self.u = matrix([[0.], [0.], [0.], [0.]])
+        self.F = matrix([[1., 0., self.dt, 0.], [0, 1., 0., self.dt], [0., 0., 1., 0.], [0., 0., 0., 1.]])
+        self.H = matrix([[1., 0., 0., 0.], [0., 1., 0., 0.]])
+        self.P = matrix(
+            [[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., distance_noise, 0.], [0., 0., 0., distance_noise]])
+        self.R = matrix([[gps_noise, 0.0], [0.0, gps_noise]])
+        self.I = matrix([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])
+
+
+    def filter(self, x, P):
+
+        Z = matrix([[self.measurements]])
+        y = Z - (self.H * x)
+        S = self.H * P * self.H.transpose() + self.R
+        K = P * self.H.transpose() * S.inverse()
+        X = x + (K * y)
+
+        P = (self.I - (K * self.H)) * P
+
+        # prediction
+        x = (self.F * x) + self.u
+        P = self.F * P * self.F.transpose()
+
+        #result
+        self.X = x
+        self.P = P
+
 
     def act(self):
-        """"
-            * this is the basic function. It is called repeatedly after the previous command has been executed.
-                In act you should return a list. For constants see *defines.py*
+        if len(self.command_queue) == 0:
 
-            *  Moving : ["move", number_of_ticks] - moves by number_of_ticks*TICK_MOVE in current direction; consumes variable amount of time: number_of_ticks*TICK_MOVE / speed
-            *  Turning : ["turn", number_of_ticks] - turns by number_of_ticks*TICK_TURN; consumes variable amount of time: number_of_ticks*TICK_TURN / speed
-            *  Sense GPS: ["sense_gps"] - consumes variable amount of time: gps_delay - has gps_noise gaussian noise
-            *  Sense sonar: ["sense_sonar"] - consumes constant amount of time : 0.01 simulation time unit - has sonar_noise gaussian noise
-            *  Sense field: ["sense_field"] - consumes constant amount of time : 0.01 simulation time_unit - doesn't have read noise
-            *  Communicate finish: ["finish"] - consumes 0 units of time
-            *  Write to console: ["write_console", string] - consumes 0 units of time, however cannot be used in submission (that is
-            code that you submit to us cannot execute action "write_console", you can use it only for debugging)
-            """
+            if self.phase == KalmanFilter.STATE_MOTION:
+                pass
+            elif self.phase == KalmanFilter.STATE_MEASURMENTS:
+                pass
+            elif self.phase == MAP_GOAL:
+                self.command_queue.append([FINISH])
+
+            elif self.phase == KalmanFilter.STATE_DECIDE_NEXT:
+                self.phase_helper = 0
+                self.mapa[(self.actual_x, self.actual_y)] = 1
+                neigh = [(self.actual_x + 1, self.actual_y), (self.actual_x, self.actual_y - 1),
+                         (self.actual_x - 1, self.actual_y), (self.actual_x, self.actual_y + 1)]
+                if not all((x in self.mapa for x in neigh)):
+                    self.command_queue.append([SENSE_SONAR])
+                    self.phase = KalmanFilter.STATE_SCANNING
+
+        elif self.phase == KalmanFilter.STATE_SCANNING:
+
+            # Directional cosinus
+            # Change of coordinaes for convenience
+            vector = (math.cos((self.actual_angle - 90.0) / 180.0 * math.pi),
+                      math.sin((self.actual_angle - 90.0) / 180.0 * math.pi))
+            scanned = (self.actual_x - round(vector[1]), self.actual_y + round(vector[0]))
+
+            if (self.actual_x - round(vector[1] + 0.01), self.actual_y + round(vector[0] + 0.01)) not in self.mapa:
+                if self.last_distance < 0.9:
+                    # Strange indexing because x runs vertically and y runs horizontally
+                    # Set big number so that it won't be visited
+                    self.mapa[(self.actual_x - round(vector[1] + 0.01), self.actual_y + round(vector[0] + 0.01))] = 1000
+                else:
+                    self.mapa[(self.actual_x - round(vector[1] + 0.01), self.actual_y + round(vector[0] + 0.01))] = 0
+
+            self.phase_helper += 1
+
+
+            # It means that we have reached the last rotation
+            if self.phase_helper == 4:
+                self.phase = KalmanFilter.STATE_DECIDE_NEXT
+            else:
+                self.command_queue.append([TURN, int(0.5 * math.pi / TICK_ROTATE)])
+                self.angle = (self.angle + 90.0) % 360
+                self.command_queue.append([SENSE_SONAR])
+
         return self.command_queue.pop(0)
 
 
     def on_sense_sonar(self, dist):
-        self.last_dstance = dist       
+        self.last_dstance = dist
 
     def on_sense_gps(self, x, y):
         self.x = x
         self.y = y
-    
-    def on_sense_field(self, file_type, file_parameter):
+        self.measurements = [x, y]
+        filter(self, self.X, self.P)
+
+
+    def on_sense_field(self, field_type, field_parameter):
+
         if field_type == MAP_GOAL:
-            self.phase = MAP_GOAL
+            self.command_queue = [[FINISH]]
