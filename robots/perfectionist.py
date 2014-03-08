@@ -745,7 +745,7 @@ class PRC(RobotController):
                     self.drive_max_diff=controller.drive_max_diff
 
                     dlugosc_ruchu = max(1, int((1-(controller.distance_noise*1))/self.drive_max_diff))
-                    print dlugosc_ruchu
+                    #print dlugosc_ruchu
                     c.append(controller._MoveTicks(controller, dlugosc_ruchu))
                 c.append(self)
                 return True

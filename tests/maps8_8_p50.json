@@ -1,0 +1,80 @@
+// you can put many test objects in this array
+[
+    {
+        "map": "maps/maps8_8_p50.map",
+        "steering_noise": 0.0000,
+        "sonar_noise": 0.000,
+        "measurement_noise": 0.000,
+        "gps_delay": 2.0,
+        "distance_noise": 0.000,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+    {
+        "map": "maps/maps8_8_p50.map",
+        "steering_noise": 0.05,
+        "sonar_noise": 0.05,
+        "measurement_noise": 0.05,
+        "gps_delay": 2.0,
+        "distance_noise": 0.05,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+	{
+        "map": "maps/maps8_8_p50.map",
+        "steering_noise": 0.1,
+        "sonar_noise": 0.1,
+        "measurement_noise": 0.1,
+        "gps_delay": 2.0,
+        "distance_noise": 0.1,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+	{
+        "map": "maps/maps8_8_p50.map",
+        "steering_noise": 0.2,
+        "sonar_noise": 0.2,
+        "measurement_noise": 0.2,
+        "gps_delay": 2.0,
+        "distance_noise": 0.2,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+	{
+        "map": "maps/maps8_8_p50.map",
+        "steering_noise": 0.4,
+        "sonar_noise": 0.4,
+        "measurement_noise": 0.4,
+        "gps_delay": 2.0,
+        "distance_noise": 0.4,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+	{
+        "map": "maps/maps8_8_p50.map",
+        "steering_noise": 0.6,
+        "sonar_noise": 0.6,
+        "measurement_noise": 0.6,
+        "gps_delay": 2.0,
+        "distance_noise": 0.6,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    },
+	{
+        "map": "maps/maps8_8_p50.map",
+        "steering_noise": 1.0,
+        "sonar_noise": 1.0,
+        "measurement_noise": 1.0,
+        "gps_delay": 2.0,
+        "distance_noise": 1.0,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    }
+]

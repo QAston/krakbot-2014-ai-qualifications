@@ -1,0 +1,17 @@
+"K": 7, "title": "", "M": 9, "N": 9
+#########
+#.......#
+#...#..##
+#.x...#s#
+#..#..#.#
+#...#...#
+##...#..#
+#.......#
+#########
+direction 7 6 northwest
+direction 1 6 southwest
+optimal_path 7 3 north
+optimal_path 2 6 west
+optimal_path 6 7 north
+optimal_path 5 5 north
+optimal_path 1 4 west
