@@ -665,9 +665,9 @@ class PRC(RobotController):
             self.controller = controller
             self.phase = 0
             self.samples = controller.sonar_cache
-            self.odczyty = num_samples_needed(0.99, 0.174, controller.sonar_noise)
+            self.odczyty = num_samples_needed(0.99, 0.4, controller.sonar_noise)
             if self.odczyty < 1:
-                self.odczyty=5
+                self.odczyty = 5
 
         def act(self):
             return [SENSE_SONAR]
@@ -675,33 +675,51 @@ class PRC(RobotController):
         def done(self):
             controller = self.controller
             c = controller.commands
+            c.append(PRC._CheckFieldCommand(self.controller))
+            c.append(PRC._CheckGoal(self.controller))
             self.samples.append(controller.last_sonar_read)
-            c.append(controller._TurnAngleTicks(controller,int(1)))
 
-            fast_recount = 0.2+controller.distance_noise*2.8
-
-            ruch = 0
-
-            print str(fast_recount)
-            print str(self.odczyty)
-            print str(len(self.samples))
-            print str(self.samples[-1])
+            print self.samples[-1]
+            print len(self.samples)
+            print self.odczyty
 
             if len(self.samples) < self.odczyty:
                 return None
             else:
                 ruch = sum(self.samples)/self.odczyty
-                print ruch
+                controller.clear_angle_cache()
 
-                if ruch < 0.6:
-                    c.append(controller._TurnAngleTicks(controller,int(15)))
+                print "D:"+str(controller.drive_max_diff)
+                print "R:"+str(ruch)
+
+                if ruch < 0.4:
+                    c.append(controller._TurnAngleTicks(controller,int(1)))
                 else:
-                    zmienna = int(sum(self.samples)/self.odczyty)
-                    c.append(controller._MoveTicks(controller, zmienna))
+                    #if controller.drive_max_diff > ruch:
+                        c.append(controller._KK_MOVE(controller, (ruch-0.3999)))
                 c.append(self)
                 return True
 
-            return None
+            return True
+
+        def sumPl(self,w):
+            s = 0.0
+            for x in w:
+                if x > 0.0:
+                    s += x
+            return s
+
+    class _KK_MOVE(object):
+        def __init__(self, controller, move_var):
+            self.move_var = move_var
+            self.controller = controller
+
+        def act(self):
+            controller = self.controller
+            return [MOVE, self.move_var]
+
+        def done(self):
+            return True
 
 def get_front(pos, angle):
     dist = 1.0
