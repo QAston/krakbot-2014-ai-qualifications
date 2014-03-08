@@ -679,9 +679,9 @@ class PRC(RobotController):
             c.append(PRC._CheckGoal(self.controller))
             self.samples.append(controller.last_sonar_read)
 
-            print self.samples[-1]
-            print len(self.samples)
-            print self.odczyty
+            #print self.samples[-1]
+            #print len(self.samples)
+            #print self.odczyty
 
             if len(self.samples) < self.odczyty:
                 return None
@@ -689,36 +689,17 @@ class PRC(RobotController):
                 ruch = sum(self.samples)/self.odczyty
                 controller.clear_angle_cache()
 
-                print "D:"+str(controller.drive_max_diff)
-                print "R:"+str(ruch)
+                #print "D:"+str(controller.drive_max_diff)
+                #print "R:"+str(ruch)
 
-                if ruch < 0.4:
+                if ruch < 0.9:
                     c.append(controller._TurnAngleTicks(controller,int(1)))
                 else:
                     #if controller.drive_max_diff > ruch:
-                        c.append(controller._KK_MOVE(controller, (ruch-0.3999)))
+                        c.append(controller._MoveTicks(controller, 1))
                 c.append(self)
                 return True
 
-            return True
-
-        def sumPl(self,w):
-            s = 0.0
-            for x in w:
-                if x > 0.0:
-                    s += x
-            return s
-
-    class _KK_MOVE(object):
-        def __init__(self, controller, move_var):
-            self.move_var = move_var
-            self.controller = controller
-
-        def act(self):
-            controller = self.controller
-            return [MOVE, self.move_var]
-
-        def done(self):
             return True
 
 def get_front(pos, angle):
