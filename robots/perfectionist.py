@@ -684,6 +684,8 @@ class PRC(RobotController):
             self.odczyty = num_samples_needed(0.99, 0.4, controller.sonar_noise)
             if self.odczyty < 1:
                 self.odczyty = 5
+            self.mega_licznik = 0
+            self.drive_max_diff = controller.drive_max_diff
 
         def act(self):
             return [SENSE_SONAR]
@@ -699,20 +701,27 @@ class PRC(RobotController):
             #print len(self.samples)
             #print self.odczyty
 
+
             if len(self.samples) < self.odczyty:
                 return None
             else:
                 ruch = sum(self.samples)/self.odczyty
-                controller.clear_angle_cache()
+                #controller.clear_angle_cache()
 
                 #print "D:"+str(controller.drive_max_diff)
                 #print "R:"+str(ruch)
+                #print controller.drive_max_diff
 
-                if ruch < 0.9:
+                if ruch < self.drive_max_diff:
+                    self.mega_licznik = self.mega_licznik +1
                     c.append(controller._TurnAngleTicks(controller,int(1)))
+                    if self.mega_licznik % 35 == 0:
+                        self.drive_max_diff=self.drive_max_diff/3
+                        print "Reset!"+str(self.drive_max_diff)
                 else:
-                    #if controller.drive_max_diff > ruch:
-                        c.append(controller._MoveTicks(controller, 1))
+                    self.mega_licznik=0
+                    self.drive_max_diff=controller.drive_max_diff
+                    c.append(controller._MoveTicks(controller, 1))
                 c.append(self)
                 return True
 
