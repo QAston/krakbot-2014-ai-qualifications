@@ -67,8 +67,8 @@ class PRC(RobotController):
         self.drive_precision = (self.drive_max_diff - TICK_MOVE) / 2
         # calculate how much precision we need from sensors
         self.update_position_precision = PRC.MIN_POSITION_PRECISION - self.drive_precision
-        if self.update_position_precision < 0.0001:
-            raise ValueError("Cannot get enough precision for algorithm to work")
+        #if self.update_position_precision < 0.0001:
+        #    raise ValueError("Cannot get enough precision for algorithm to work")
 
         self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision,
                                                             sonar_noise) + 1
@@ -678,18 +678,25 @@ class PRC(RobotController):
             self.samples.append(controller.last_sonar_read)
             c.append(controller._TurnAngleTicks(controller,int(1)))
 
+            fast_recount = 0.2+controller.distance_noise*2.8
+
             ruch = 0
-            fast_recount = 3
+
+            print str(fast_recount)
+            print str(self.odczyty)
+            print str(len(self.samples))
+            print str(self.samples[-1])
+
             if len(self.samples) < self.odczyty:
                 return None
             else:
                 ruch = sum(self.samples)/self.odczyty
                 print ruch
 
-                if ruch < 0.2:
+                if ruch < 0.6:
                     c.append(controller._TurnAngleTicks(controller,int(15)))
                 else:
-                    zmienna = int(sum(self.samples)/self.odczyty-(0.2-0.001))
+                    zmienna = int(sum(self.samples)/self.odczyty)
                     c.append(controller._MoveTicks(controller, zmienna))
                 c.append(self)
                 return True
