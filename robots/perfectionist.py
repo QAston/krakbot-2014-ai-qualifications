@@ -154,7 +154,10 @@ class PRC(RobotController):
                 self.angle_change_position = self.movement_position
                 self.movement_angle_estimate_updated = False
 
+                self.plan = []
+
                 self.commands = [self._InitPerfectionist(self)]  # first command to run
+
 
         except Exception:
             ai = PRC.AI_KRETYN
@@ -249,6 +252,7 @@ class PRC(RobotController):
             curr = get_front(curr, angle)
         return i
 
+
     def __str__(self):
         return "PRC[pos:{} angle:{}]".format(self.theoretical_position, self.theoretical_angle)
 
@@ -271,6 +275,53 @@ class PRC(RobotController):
                 c.append(PRC._TurnAngleCommand(controller, angle_diff(controller.theoretical_angle, 0.0)))
 
             c.append(PRC._CheckCurrent(controller))
+            return True
+
+    class _PlanPath(object):
+        def __init__(self, controller):
+            self.controller = controller
+
+        def act(self):
+            controller = self.controller
+            c = controller.commands
+
+            controller.plan = []
+            controller.plan.append(0)
+
+            self.controller.commands = [PRC._ContinuePlan(self.controller)]
+
+        def done(self):
+            return True
+
+    # continue plan, create new if doesn't exist
+    class _ContinuePlan(object):
+        def __init__(self, controller):
+            self.controller = controller
+
+        def act(self):
+            controller = self.controller
+            if len(controller.plan) == 0:
+                self.controller.commands = [PRC._PlanPath(controller)]
+            else:
+                dir = controller.plan.pop(0)
+                controller.commands = [PRC._PlannedMove(controller, dir)] + controller.commands
+            return None
+
+        def done(self):
+            return True
+
+    class _PlannedMove(object):
+        def __init__(self, controller, dir):
+            self.controller = controller
+            self.dir = dir
+
+        def act(self):
+            controller = self.controller
+            c = []
+            pos = controller.get_discrete_position()
+            controller.commands = [PRC._MoveNext(controller), PRC._CheckCurrent(controller)] + c
+
+        def done(self):
             return True
 
     # select what field we should go next to
@@ -556,7 +607,7 @@ class PRC(RobotController):
             if forward not in controller.times_visited:
                 c.append(PRC._CheckWall(self.controller))
 
-            c.append(PRC._SelectNext(self.controller))
+            c.append(PRC._ContinuePlan(self.controller))
             return None
 
         def done(self):
