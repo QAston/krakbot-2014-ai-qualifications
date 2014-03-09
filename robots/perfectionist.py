@@ -550,6 +550,7 @@ class PRC(RobotController):
 
             vector = (self.target_position[0] - controller.movement_position[0],
                       self.target_position[1] - controller.movement_position[1])
+            controller.u =  matrix([[vector[0]], [vector[1]], [0.], [0.]])
 
             dist = math.cos(angle_diff(math.atan2(vector[1], vector[0])
                                        , controller.movement_angle)) * vector_length(vector)
@@ -597,7 +598,6 @@ class PRC(RobotController):
         def done(self):
             controller = self.controller
             controller.X = matrix([[controller.theoretical_position[0]],[controller.theoretical_position[1]],[controller.distance_noise],[controller.distance_noise]])
-            print "------------------zaaktualizowalo macierz--------------------"
             return True
 
     #low level function, use other ones instead
