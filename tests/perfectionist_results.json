@@ -1,80 +1,93 @@
 [
     {
-        "time_elapsed": 0.34740888038485085, 
+        "time_elapsed": 20.998597109208816, 
         "test_id": 1, 
-        "time_consumed_robot": 3.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 6.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 48.31997999992127, 
         "test_id": 2, 
-        "time_consumed_robot": 3.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 464.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 290.71998000079554, 
         "test_id": 3, 
-        "time_consumed_robot": 2.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 459.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 1007.8199799966316, 
         "test_id": 4, 
-        "time_consumed_robot": 2.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 527.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 1007.2693457313783, 
         "test_id": 5, 
-        "time_consumed_robot": 1.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 512.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 290.0291292957947, 
         "test_id": 6, 
-        "time_consumed_robot": 2.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 460.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 1007.1481617792286, 
         "test_id": 7, 
-        "time_consumed_robot": 3.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 521.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 1370.6340183799232, 
         "test_id": 8, 
-        "time_consumed_robot": 2.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 749.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34710000000001445, 
+        "time_elapsed": 1370.9303108563136, 
         "test_id": 9, 
-        "time_consumed_robot": 0.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 2576.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.3471009676580206, 
+        "time_elapsed": 2296.823513015459, 
         "test_id": 10, 
-        "time_consumed_robot": 2.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 768.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.3470989697370282, 
+        "time_elapsed": 229.15690684573565, 
         "test_id": 11, 
-        "time_consumed_robot": 1.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 494.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.34709954128415543, 
+        "time_elapsed": 44651.82408021964, 
         "test_id": 12, 
-        "time_consumed_robot": 1.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 3961.0, 
+        "goal_achieved": true, 
+        "error": false
     }, 
     {
-        "time_elapsed": 0.47803788782288287, 
+        "time_elapsed": 4120.366329678299, 
         "test_id": 13, 
-        "time_consumed_robot": 2.0, 
-        "goal_achieved": false
+        "time_consumed_robot": 1083.0, 
+        "goal_achieved": false, 
+        "error": "list index out of range"
     }
 ]
