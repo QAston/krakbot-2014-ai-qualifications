@@ -629,7 +629,8 @@ class PRC(RobotController):
         def __init__(self, controller, required_distance):
             self.controller = controller
             self.samples = controller.sonar_cache
-            self.required_distance = required_distance + 0.3
+            #
+            self.required_distance = required_distance + 0.25
 
         def act(self):
             return [SENSE_SONAR]
@@ -755,19 +756,19 @@ class PRC(RobotController):
                 self.drive_max_diff = controller.drive_max_diff
                 self.max_drive_max_diff = controller.drive_max_diff
             self.kierunek_jazdy = 0
-            self.ile_razy = random.randint(7,25)
+            self.ile_razy = random.randint(3,15)
             self.licznik_razy = 0
             self.licznik_glowny = 0
             self.czy_oglupiony = 0
 
-            print "Drive max"+str(self.drive_max_diff)
-            print "Max drive"+str(self.max_drive_max_diff)
+            # print "Drive max"+str(self.drive_max_diff)
+            # print "Max drive"+str(self.max_drive_max_diff)
 
         def act(self):
             return [SENSE_SONAR]
 
         def done(self):
-            print self.drive_max_diff
+            # print self.drive_max_diff
             controller = self.controller
             c = controller.commands
 
@@ -775,7 +776,7 @@ class PRC(RobotController):
             c.append(PRC._CheckGoal(self.controller))
             self.samples.append(controller.last_sonar_read)
             self.licznik_glowny=self.licznik_glowny+1
-            if self.czy_oglupiony == 1 and self.licznik_glowny >15000:
+            if self.czy_oglupiony == 1 and self.licznik_glowny > 35000:
                 self.max_drive_max_diff = controller.drive_max_diff
                 self.czy_oglupiony=0
                 self.licznik_glowny=0
@@ -791,10 +792,13 @@ class PRC(RobotController):
                 return None
             else:
                 ruch = sum(self.samples)/self.odczyty
+                self.suma_sample = sum(self.samples)
 
                 if ruch < self.drive_max_diff:
                     self.mega_licznik = self.mega_licznik +1
                     kat_ruchu = max(1, int(((math.pi/4)-(controller.steering_noise*math.pi / 4))/TICK_ROTATE))
+                    # print "K1:"+str(self.kierunek_jazdy)
+                    # print "Lr:"+str(self.licznik_razy)
                     if self.kierunek_jazdy == 0 and self.licznik_razy <= self.ile_razy:
                         c.append(controller._TurnAngleTicks(controller, kat_ruchu))
                         self.licznik_razy = self.licznik_razy+1
@@ -803,7 +807,7 @@ class PRC(RobotController):
                         self.licznik_razy=self.licznik_razy+1
                     if self.licznik_razy == self.ile_razy:
                         self.licznik_razy = 0
-                        self.ile_razy = random.randint(13, 50)
+                        self.ile_razy = random.randint(8, 26)
                         if self.kierunek_jazdy == 0:
                             self.kierunek_jazdy = 1
                         else:
@@ -812,13 +816,13 @@ class PRC(RobotController):
                         if self.drive_max_diff > 0.6:
                             self.drive_max_diff = self.max_drive_max_diff/2
                 else:
-                    dlugosc_ruchu = max(1, int((0.5*sum(self.samples)-(controller.distance_noise*0.5*sum(self.samples)))/self.drive_max_diff))
+                    dlugosc_ruchu = max(1, int(((0.5*self.suma_sample)-(controller.distance_noise*0.5*self.suma_sample))/self.drive_max_diff))
 
-                    print "MD:"+str(self.max_drive_max_diff)
-                    print "Ol:"+str(len(self.samples))
-                    print "Om:"+str(sum(self.samples))
-                    print "D:"+str(dlugosc_ruchu)
-                    print "R:"+str(ruch)
+                    # print "MD:"+str(self.max_drive_max_diff)
+                    # print "Ol:"+str(len(self.samples))
+                    # print "Om:"+str(sum(self.samples))
+                    # print "D:"+str(dlugosc_ruchu)
+                    # print "R:"+str(ruch)
 
                     self.mega_licznik = 0
                     self.drive_max_diff=self.max_drive_max_diff
