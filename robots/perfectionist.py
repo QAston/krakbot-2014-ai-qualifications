@@ -76,8 +76,6 @@ class PRC(RobotController):
         self.gps_cache = []
         self.sonar_cache = []
 
-        #TODO: turn to right angle at the beginning of the ride because we start at starting_position[2] which may not be multiplier of Pi/2
-
         self.change_ai(PRC.AI_PERFECT)
 
     # changes ai to selected one, or dumber if selected can't be used
@@ -156,7 +154,7 @@ class PRC(RobotController):
                 self.angle_change_position = self.movement_position
                 self.movement_angle_estimate_updated = False
 
-                self.commands = [self._CheckCurrent(self)]  # first command to run
+                self.commands = [self._InitPerfectionist(self)]  # first command to run
 
         except Exception:
             ai = PRC.AI_KRETYN
@@ -258,6 +256,22 @@ class PRC(RobotController):
     # fields of PRC because of the way simulator loads classes
     # act - returns action to do for a robot, can be None
     # done - returns None if action isn't finished yet, other things when finished
+
+    class _InitPerfectionist(object):
+        def __init__(self, controller):
+            self.controller = controller
+
+        def act(self):
+            return None
+
+        def done(self):
+            controller = self.controller
+            c = controller.commands
+            if controller.theoretical_angle != 0:
+                c.append(PRC._TurnAngleCommand(controller, angle_diff(controller.theoretical_angle, 0.0)))
+
+            c.append(PRC._CheckCurrent(controller))
+            return True
 
     # select what field we should go next to
     class _SelectNext(object):
