@@ -805,7 +805,7 @@ class PRC(RobotController):
         def __init__(self, controller, required_distance):
             self.controller = controller
             self.samples = controller.sonar_cache
-            self.required_distance = required_distance + 0.3
+            self.required_distance = required_distance + 0.1
 
         def act(self):
             return [SENSE_SONAR]
