@@ -235,11 +235,11 @@ class PRC(RobotController):
         x = x + (K * y)
         P = (self.I - (K * self.H)) * P
         #result
-        print 'x= '
-        x.show()
+        #print 'x= '
+        #x.show()
         self.X = x
-        print 'P= '
-        P.show()
+        #print 'P= '
+        #P.show()
         self.P = P
 
     # changes ai to selected one, or dumber if selected can't be used
