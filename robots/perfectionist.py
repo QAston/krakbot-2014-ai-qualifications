@@ -96,12 +96,14 @@ class PRC(RobotController):
                 if self.update_position_precision < 0.0001:
                     raise ValueError("Cannot get enough precision for algorithm to work")
 
-                self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision,
+                self.distance_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY,
+                                                                    self.update_position_precision,
                                                                     self.sonar_noise) + 1
                 self.gps_samples_position = num_samples_needed(PRC.POSITION_CERTAINTY, self.update_position_precision,
                                                                self.gps_noise) + 1
 
                 self.has_perfect_steering = self.steering_noise <= 0.000002
+                self.movement_can_break = not self.has_perfect_steering
 
                 # check if we need position corrections
                 if self.drive_max_diff - TICK_MOVE <= 0.0003 and self.steering_noise <= 0.000003:  # just tiny steering changes
@@ -140,13 +142,14 @@ class PRC(RobotController):
                                                                self.sonar_noise) + 1
                 self.distance_samples_medium = num_samples_needed(PRC.DISTANCE_CERTAINTY, PRC.DISTANCE_PRECISION_MEDIUM,
                                                                   self.sonar_noise) + 1
-                self.distance_samples_detect_wall = num_samples_needed(PRC.DISTANCE_CERTAINTY, self.detect_wall_precision,
-                                                                    self.sonar_noise) + 1
+                self.distance_samples_detect_wall = num_samples_needed(PRC.DISTANCE_CERTAINTY,
+                                                                       self.detect_wall_precision,
+                                                                       self.sonar_noise) + 1
 
                 # todo: verify constants
                 self.gps_samples_calibrate_angle = num_samples_needed(PRC.POSITION_CERTAINTY, 0.01, self.gps_noise) + 1
                 # todo: verify constants - calibration is expensive on gps, so it may be better to skip it if gps takes too long
-                self.enable_gps_angle_calibration = self.steering_noise > 0.0001
+                self.enable_gps_angle_calibration = self.steering_noise > 0.1
 
                 #init gps helpers
                 self.angle_dirty = False
@@ -159,11 +162,12 @@ class PRC(RobotController):
             ai = PRC.AI_KRETYN
 
         if ai == PRC.AI_KRETYN:
-            self.commands = [self._KKRety(self)] #Uruchomienie kretyna
+            self.commands = [self._KKRety(self)]  #Uruchomienie kretyna
 
         self.current_ai = ai
 
         self.command = PRC._EmptyCommand(self)
+        print "Changed AI to {}".format(self.current_ai)
 
 
     def act(self):
@@ -349,6 +353,10 @@ class PRC(RobotController):
             self.controller = controller
             self.init = False
             self.target_position = None
+            self.distance_traveled = 0.0
+            self.prev_distance_traveled = 0.0
+            self.starting_position = None
+            self.broken_movement_checked = not controller.movement_can_break
 
         def act(self):
             controller = self.controller
@@ -359,6 +367,7 @@ class PRC(RobotController):
                 self.target_position = pos[0] + self.distance * math.cos(orientation), pos[
                                                                                            1] + self.distance * math.sin(
                     orientation)
+                self.starting_position = controller.movement_position
                 print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
 
             vector = (self.target_position[0] - controller.movement_position[0],
@@ -366,6 +375,17 @@ class PRC(RobotController):
 
             dist = math.cos(angle_diff(math.atan2(vector[1], vector[0])
                                        , controller.movement_angle)) * vector_length(vector)
+
+            if (not self.broken_movement_checked):
+                self.broken_movement_checked = True
+                controller.commands = [PRC._CheckBrokenMovement(controller, dist), self] + controller.commands
+                return None
+
+            traveled_vector = (controller.movement_position[0] - self.starting_position[0],
+                               controller.movement_position[1] - self.starting_position[1])
+
+            self.prev_distance_traveled = self.distance_traveled
+            self.distance_traveled = vector_length(traveled_vector)
 
             move_times = int(max(dist, 0.0) / controller.drive_max_diff + 0.5)
             if move_times >= 1:
@@ -384,7 +404,7 @@ class PRC(RobotController):
                         controller.angle_dirty = False
 
                 if try_calibrate:
-                    move_times = calibrate_move_times
+                    move_times = min(calibrate_move_times, move_times)
 
                 c.append(PRC._MoveTicks(controller, move_times))
                 c.append(controller.update_movement_position_class(controller))
@@ -511,8 +531,11 @@ class PRC(RobotController):
             # mark visited
             if (x_disc, y_disc) not in controller.times_visited:
                 controller.times_visited[(x_disc, y_disc)] = 1
-            else:
+            elif controller.times_visited[(x_disc, y_disc)] != 65536:
                 controller.times_visited[(x_disc, y_disc)] += 1
+            else:
+                controller.change_ai(PRC.AI_KRETYN)
+                return None
 
             forward = controller.get_forward_position()
 
@@ -560,12 +583,16 @@ class PRC(RobotController):
                 #print "Check wall:{}".format(str(self.controller))
                 #print "-high-samples:{}".format(num_samples)
                 distance = sum(self.samples) / num_samples
-                #print "-distance:{}".format(distance)
-                distance -= 0.5
-                fields = int(distance + 0.5)
-                #print "-fields:{}".format(fields)
-                controller.mark_clear_fields(fields, True)
-                return True
+                if distance < 0.1:
+                    controller.change_ai(PRC.AI_KRETYN)
+                    return True
+                else:
+                    #print "-distance:{}".format(distance)
+                    distance -= 0.5
+                    fields = int(distance + 0.5)
+                    #print "-fields:{}".format(fields)
+                    controller.mark_clear_fields(fields, True)
+                    return True
 
             # for perfect steering always use precise dist check
             elif (not controller.has_perfect_steering
@@ -584,6 +611,29 @@ class PRC(RobotController):
 
             return None
 
+    class _CheckBrokenMovement(object):
+        def __init__(self, controller, required_distance):
+            self.controller = controller
+            self.samples = controller.sonar_cache
+            self.required_distance = required_distance
+
+        def act(self):
+            return [SENSE_SONAR]
+
+        def done(self):
+            controller = self.controller
+            self.samples.append(controller.last_sonar_read)
+            num_samples = len(self.samples)
+            if num_samples >= controller.distance_samples_detect_wall:
+
+                distance = sum(self.samples) / num_samples
+                print "Check broken move {}, {}".format(distance, self.required_distance)
+                if distance < self.required_distance:
+                    controller.change_ai(PRC.AI_KRETYN)
+                return True
+
+            return None
+
     def get_clear_fields(self, distance, precision):
         distance -= 0.5 + self.get_pos_precision() + precision
         return int(math.floor(distance))
@@ -594,7 +644,7 @@ class PRC(RobotController):
         cur = self.get_discrete_position()
         for i in range(distance):
             cur = get_front(cur, self.theoretical_angle)
-            if cur not in self.times_visited:
+            if cur not in self.times_visited or self.times_visited[cur] == 65536:
                 self.times_visited[cur] = 0
         if (mark_wall and dist == distance) or self.has_perfect_steering:
             cur = get_front(cur, self.theoretical_angle)
@@ -752,6 +802,7 @@ class PRC(RobotController):
 
             return True
 
+
 def get_front(pos, angle):
     dist = 1.0
     return int(pos[0] + 0.5 + dist * math.cos(angle)), int(pos[1] + 0.5 + dist * math.sin(angle))
@@ -800,18 +851,21 @@ def vector_length(v):
 def num_samples_needed(required_certainty, error_margin, noise):
     return int((ltqnorm((required_certainty + 1.0) / 2) * noise / error_margin) ** 2 + 0.5)
 
+
 def kalman_measurement_update(state, uncertainty, measurement, measurement_function, measurement_uncertainty, i):
     z = measurement.transpose()
-    y = z - measurement_function*state
-    s = measurement_function*uncertainty*measurement_function.transpose() + measurement_uncertainty
-    k = uncertainty*measurement_function.transpose()*s.inverse()
-    state = state+k*y
-    uncertainty = (i-k*measurement_function)*uncertainty
+    y = z - measurement_function * state
+    s = measurement_function * uncertainty * measurement_function.transpose() + measurement_uncertainty
+    k = uncertainty * measurement_function.transpose() * s.inverse()
+    state = state + k * y
+    uncertainty = (i - k * measurement_function) * uncertainty
+
 
 def kalman_prediction(state, uncertainty, next_state_function, external_state_change):
-    state = next_state_function*state+external_state_change
-    uncertainty=next_state_function*uncertainty*next_state_function.transpose()
+    state = next_state_function * state + external_state_change
+    uncertainty = next_state_function * uncertainty * next_state_function.transpose()
     return state, uncertainty
+
 
 #inverse of cumulative function of normal distribution
 def ltqnorm(p):
