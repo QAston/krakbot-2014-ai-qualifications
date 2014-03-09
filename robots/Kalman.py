@@ -32,7 +32,7 @@ class KRC(RobotController):
 
         self.actual_x = starting_position[0]
         self.actual_y = starting_position[1]
-        self.actual_angle = starting_position[2]
+        self.actual_angle = 0
 
         self.mapa = {}
         self.mapa[(self.actual_x, self.actual_y)] = 1
@@ -194,16 +194,16 @@ class KRC(RobotController):
 
         def done(self):
             controller = self.controller
-            controller.mapa[(controller.actual_x, controller.actual_y)] = 1
+            #controller.mapa[(controller.actual_x, controller.actual_y)] = 1
             neigh = [(controller.actual_x + 1, controller.actual_y), (controller.actual_x, controller.actual_y - 1),
                      (controller.actual_x - 1, controller.actual_y), (controller.actual_x, controller.actual_y + 1)]
             if not all((x in controller.mapa for x in neigh)):
-                #controller.command_queue.append([SENSE_SONAR])
+                controller.commands.append(KRC._ReadSonar(controller))
                 controller.commands.append(KRC._StateScanning(controller))
                 #controller.phase = KRC.STATE_SCANNING
-                print("tu skanuje")
+                print"---przejscie do StateScanning---"
             else:
-                print("elo jestem tu!")
+                print"---decyduje co dalej---"
                 neigh = [(controller.actual_x + 1, controller.actual_y), (controller.actual_x, controller.actual_y - 1),
                      (controller.actual_x - 1, controller.actual_y), (controller.actual_x, controller.actual_y + 1)]
                 find_min = [(controller.mapa[x], x) for x in neigh]
@@ -216,16 +216,15 @@ class KRC(RobotController):
                 print "Vector is ", vector
                 # Angle calculation + change of coordinates
                 angle = math.atan2(-vector[0], vector[1]) / math.pi * 180.0 + 90.0
-
-
-
-
                 print "Current angle is ",controller.actual_angle, "rotation by ",(angle - controller.actual_angle), " to ",angle
                 rotation_ticks = int((angle - controller.actual_angle)/180.0 * math.pi / TICK_ROTATE)
                 print(rotation_ticks)
-                #if rotation_ticks != 0 : controller.commands.append(KRC._TickTurn(controller,rotation_ticks))
+                #if rotation_ticks != 0:
+                    #controller.commands.append(KRC._TickTurn(controller,rotation_ticks))
                 controller.actual_angle = angle
-                controller.commands.append(KRC._MoveFwd(controller))
+                print"---aktulny kat: ",controller.actual_angle,"---"
+                controller.commands.append(KRC._MoveFwd(controller,vector))
+                controller.commands.append(KRC._FindPosition(controller))
 
 
             return True
@@ -237,13 +236,14 @@ class KRC(RobotController):
 
         def act(self):
             controller = self.controller
-            print("scanniing")
+            print"--skanuje na pozycji: ", controller.actual_x, " ", controller.actual_y,"---"
             # Directional cosinus
             # Change of coordinaes for convenience
             vector = (math.cos((controller.actual_angle - 90.0) / 180.0 * math.pi),
                       math.sin((controller.actual_angle - 90.0) / 180.0 * math.pi))
             scanned = (controller.actual_x - round(vector[1]), controller.actual_y + round(vector[0]))
-
+            print"--scanned: ",scanned,"--"
+            print"--dystans: ",controller.last_distance,"--"
             if (controller.actual_x - round(vector[1] + 0.01), controller.actual_y + round(vector[0] + 0.01)) not in controller.mapa:
                 if controller.last_distance < 0.9:
                     # Strange indexing because x runs vertically and y runs horizontally
@@ -258,11 +258,28 @@ class KRC(RobotController):
 
                 controller.commands.append(KRC._DecideNext(controller))
             else:
-                controller.commands.append(KRC._ReadSonar(controller))
                 controller.commands.append(KRC._Turn90(controller))
+                controller.commands.append(KRC._ReadSonar(controller))
+                print"---kat po obrocie: ", controller.actual_angle,"---"
                 controller.commands.append(self)
         def done(self):
             return True
+
+    class _FindPosition(object):
+        def __init__(self, controller):
+            self.controller = controller
+            self.helper = 0
+
+        def act(self):
+            controller = self.controller
+            controller.commands.append(KRC._ReadGPS(controller))
+            controller.filter(controller.X, controller.P)
+            controller.actual_x = controller.X[0]
+            controller.actual_y = controller.X[1]
+
+        def done(self):
+            controller = self.controller
+            controller.commands.append(KRC._DecideNext(controller))
 
     class _ReadSonar(object):
         def __init__(self, controller):
@@ -275,6 +292,18 @@ class KRC(RobotController):
             controller = self.controller
             controller.last_distance = controller.last_sonar_read
             return True
+
+    class _ReadGPS(object):
+        def __init__(self,controller):
+            self.controller = controller
+
+        def act(self):
+            return [SENSE_GPS]
+
+        def done(self):
+            controller = self.controller
+            controller.measurements[0] = controller.last_gps_read[0]
+            controller.measurements[1] = controller.last_gps_read[1]
 
     class _Turn90(object):
         def __init__(self, controller):
@@ -299,26 +328,26 @@ class KRC(RobotController):
             return True
 
     class _MoveFwd(object):
-        def __init__(self, controller):
+        def __init__(self, controller, vector):
             self.controller = controller
+            self.vector = vector
 
         def act(self):
             return [MOVE, int(1.0/TICK_MOVE)]
 
         def done(self):
             controller = self.controller
-            if controller.actual_angle == 0:
-                controller.actual_y -=1
-            elif controller.actual_angle == 90:
-                controller.actual_x += 1
-            elif controller.actual_angle == 180:
-                controller.actual_y += 1
-            elif controller.actual_angle == 270:
-                controller.actual_x -= 1
-
-            controller.X[0] = controller.actual_x
-            controller.X[1] = controller.actual_y
-            controller.commands.append(KRC._DecideNext(controller))
+            # if controller.actual_angle == 0:
+            #     controller.actual_y -=1
+            # elif controller.actual_angle == 90:
+            #     controller.actual_x += 1
+            # elif controller.actual_angle == 180:
+            #     controller.actual_y += 1
+            # elif controller.actual_angle == 270:
+            #     controller.actual_x -= 1
+            controller.X[0] = controller.actual_x + self.vector[0]
+            controller.X[1] = controller.actual_y + self.vector[1]
+            #controller.commands.append(KRC._DecideNext(controller))
             return True
 
     class _CheckFieldCommand(object):
