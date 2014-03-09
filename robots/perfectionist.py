@@ -54,7 +54,7 @@ class PRC(RobotController):
 
         self.current_ai = PRC.AI_NONE
 
-        self.map[self.theoretical_position] = self.current_field
+        self.map[self.get_discrete_position()] = self.current_field
 
         # the most correct position values we can get
         self.movement_position = self.theoretical_position
@@ -287,9 +287,11 @@ class PRC(RobotController):
             controller = self.controller
             c = controller.commands
 
-            print "Resetting plan"
+            #print "Resetting plan {} {} {} {}".format(controller.get_discrete_position(), controller.theoretical_angle, controller.current_goal_area, controller.map)
             controller.plan = search(controller.get_discrete_position(), controller.theoretical_angle, controller.current_goal_area, controller.map)
             controller.commands = [PRC._ContinuePlan(controller)]
+            if len(controller.plan) == 0:
+                raise ValueError("Empty plan")
             return None
 
         def done(self):
@@ -301,7 +303,6 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
-            print "_ContinuePlan"
             controller = self.controller
             if len(controller.plan) == 0:
                 self.controller.commands = [PRC._PlanPath(controller)]
@@ -638,7 +639,8 @@ class PRC(RobotController):
 
         def act(self):
             controller = self.controller
-            c = controller.commands
+            print "CHECK_CURRENT {}".format(controller)
+            c = []
             x_disc, y_disc = controller.get_discrete_position()
             # get field type
             if (x_disc, y_disc) not in controller.map:
@@ -662,6 +664,7 @@ class PRC(RobotController):
                 c.append(PRC._CheckWall(self.controller))
 
             c.append(PRC._ContinuePlan(self.controller))
+            controller.commands = c + controller.commands
             return None
 
         def done(self):
@@ -825,8 +828,10 @@ class PRC(RobotController):
             return [SENSE_FIELD]
 
         def done(self):
-            self.controller.current_field = self.controller.last_field_read
-            return self.controller.last_field_read
+            controller = self.controller
+            controller.current_field = controller.last_field_read
+            controller.map[controller.get_discrete_position()] = controller.current_field
+            return controller.last_field_read
 
     class _CheckGoal(object):
         def __init__(self, controller):
