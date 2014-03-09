@@ -815,8 +815,7 @@ class PRC(RobotController):
                     c.append(controller._MoveTicks(controller, dlugosc_ruchu))
                 c.append(self)
                 return True
-
-            return True
+            #return True
 
 
 def get_front(pos, angle):
