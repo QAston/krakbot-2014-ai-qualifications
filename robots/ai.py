@@ -1,19 +1,13 @@
 from heapq import heappush, heappop
+import math
 
-grid = {(0,0):(0,0), (0,1):(1,0), (0,2):(0,0), (0,3):(0,0), (0,4):(0,0), (0,5):(0,0),
-        (1,0):(0,0), (1,1):(1,0), (1,2):(0,0), (1,3):(0,0), (1,4):(0,0), (1,5):(0,0),
-        (2,0):(0,0), (2,1):(1,0), (2,2):(0,0), (2,3):(0,0), (2,4):(0,0), (2,5):(0,0),
-        (3,0):(0,0), (3,1):(1,0), (3,2):(0,0), (3,3):(0,0), (3,4):(0,0), (3,5):(0,0),
-        (4,0):(0,0), (4,1):(0,0), (4,2):(0,0), (4,3):(0,0), (4,4):(1,0), (4,5):(0,0)}
+grid = {(0,0):(1,0), (0,1):(1,0), (0,2):(1,0), (0,3):(0,0), (0,4):(0,0), (0,5):(0,0),
+        (1,0):(1,0), (1,1):(0,0), (1,2):(1,0), (1,3):(0,0), (1,4):(0,0), (1,5):(0,0),
+        (2,0):(1,0), (2,1):(0,0), (2,2):(1,0), (2,3):(0,0), (2,4):(0,0), (2,5):(0,0),
+        (3,0):(1,0), (3,1):(0,0), (3,2):(1,0), (3,3):(0,0), (3,4):(0,0), (3,5):(0,0),
+        (4,0):(1,0), (4,1):(0,0), (4,2):(0,0), (4,3):(0,0), (4,4):(1,0), (4,5):(0,0)}
 
-init = [0, 0]
-
-delta = [[-1, 0 ], # go up
-         [ 0, -1], # go left
-         [ 1, 0 ], # go down
-         [ 0, 1 ]] # go right
-
-delta_name = ['^', '<', 'v', '>']
+init = [1, 1]
 
 current_goal_area = (None, 4, None, 5)
 
@@ -33,6 +27,20 @@ DIRECTION_S = 0
 DIRECTION_SE = 1
 MAP_SPECIAL_EUCLIDEAN_DISTANCE = 9 # coding [MAP_SPECIAL_EUCLIDEAN_DISTANCE, DISTANCE IN MAP UNITS]
 MAP_SPECIAL_OPTIMAL = 10
+
+def get_front(pos, angle):
+    dist = 1.0
+    return int(pos[0] + 0.5 + dist * math.cos(angle)), int(pos[1] + 0.5 + dist * math.sin(angle))
+
+def get_neighbour_pos(curr, angle):
+    #""" returns [front, left, back, right] """"
+    ret = []
+    ret.append(get_front(curr, angle))
+    for i in range(3):
+        angle += math.pi * 0.5
+        angle %= 2 * math.pi
+        ret.append(get_front(curr, angle))
+    return ret
 
 def update_goal_area(area, position, direction):
     pos_x, pos_y = position
@@ -109,8 +117,11 @@ def calc_goal_area_heuristic(goal_area, position):
 
     return x + y
 
-def get_planned_cost(grid, pos, vector):
-    return 1
+def get_planned_cost(grid, from_where, rotation, to_where):
+    if rotation == 0:
+        return 1
+    else:
+        return 2
 
 def path_can_enter(grid, pos):
     return pos not in grid or  grid[pos][0] != MAP_WALL
@@ -119,14 +130,25 @@ def path_can_enter(grid, pos):
 def actions_to_path(start, goal, action):
     path = []
     curr = goal
+    last_vec = goal
     while (curr != start):
-        vec = delta[action[curr]]
-        curr = curr[0] - vec[0], curr[1] - vec[1]
-        path.append(vec)
+        info = action[curr]
+        vec = info[1]
+        curr = vec
+        path.append((info[0], last_vec))
+        last_vec = vec
 
     return path
 
-def search(pos, current_goal_area, grid):
+def is_search_goal(grid, current_goal_area, position):
+    if goal_area_defined(current_goal_area):
+        return is_in_goal_area(current_goal_area, position) and (position not in grid)
+    else:
+        # no goal area, any unknown field will do
+        return position not in grid
+
+
+def search(pos, angle, current_goal_area, grid):
     closed = {}
     closed[pos] = 1
 
@@ -140,7 +162,7 @@ def search(pos, current_goal_area, grid):
     f = g + h
 
     open = []
-    heappush(open, (f, g, h, x, y))
+    heappush(open, (f, g, h, x, y, angle))
 
     found = False  # flag that is set when search is complete
     resign = False # flag set if we can't find expand
@@ -157,29 +179,33 @@ def search(pos, current_goal_area, grid):
 
             x = next[3]
             y = next[4]
+            a = next[5]
             g = next[1]
             expand[(x,y)] = count
             count += 1
 
-            if is_in_goal_area(current_goal_area, (x, y)):
+            if is_search_goal(grid, current_goal_area, (x, y)):
                 found = True
                 found_goal = (x, y)
             else:
+                neighs = get_neighbour_pos((x,y), a)
                 #expand winning node
-                for i in range(len(delta)):
-                    x2 = x + delta[i][0]
-                    y2 = y + delta[i][1]
-                    if x2 >= 0  and y2 >=0:
+                for i in range(4):
+                    x2 = neighs[i][0]
+                    y2 = neighs[i][1]
+                    a2 = (a + i * (math.pi / 2)) % (2*math.pi)
+                    if x2 > 0  and y2 > 0: #there're always borders on 0,0 coords
                         if (x2,y2) not in closed and path_can_enter(grid, (x2,y2)):
-                            g2 = g + get_planned_cost(grid, (x, y), (x2, y2))
+                            g2 = g + get_planned_cost(grid, (x, y), i, (x2, y2))
                             h2 = calc_goal_area_heuristic(current_goal_area, (x2,y2))
                             f2 = g2+h2
-                            heappush(open, (f2, g2, h2, x2, y2))
+                            heappush(open, (f2, g2, h2, x2, y2, a2))
                             closed[(x2,y2)] = 1
-                            action[(x2,y2)] = i
+                            action[(x2,y2)] = i, (x, y)
+
     return actions_to_path(pos, found_goal, action)
 
-print search((init[0], init[1]), current_goal_area, grid)
+print search((init[0], init[1]), 0, current_goal_area, grid)
 
 
 
