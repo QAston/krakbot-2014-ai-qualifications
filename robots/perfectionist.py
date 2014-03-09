@@ -44,10 +44,10 @@ class matrix:
             for i in range(dim):
                 self.value[i][i] = 1
 
-    def show(self):
-        for i in range(self.dimx):
-            print self.value[i]
-        print ' '
+    #def show(self):
+        #for i in range(self.dimx):
+            #print self.value[i]
+        #print ' '
 
     def __add__(self, other):
         # check if correct dimensions
@@ -235,10 +235,10 @@ class PRC(RobotController):
         x = x + (K * y)
         P = (self.I - (K * self.H)) * P
         #result
-        #print 'x= '
+        ##print 'x= '
         #x.show()
         self.X = x
-        #print 'P= '
+        ##print 'P= '
         #P.show()
         self.P = P
 
@@ -329,7 +329,7 @@ class PRC(RobotController):
         self.current_ai = ai
 
         self.command = PRC._EmptyCommand(self)
-        print "Changed AI to {}".format(self.current_ai)
+        #print "Changed AI to {}".format(self.current_ai)
 
 
     def act(self):
@@ -443,7 +443,7 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
-            #print "Select Next:{}".format(str(self.controller))
+            ##print "Select Next:{}".format(str(self.controller))
             controller = self.controller
             c = controller.commands
 
@@ -546,7 +546,7 @@ class PRC(RobotController):
                                                                                            1] + self.distance * math.sin(
                     orientation)
                 self.starting_position = controller.movement_position
-                print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
+                #print "moving {} by: {} to {}".format(str(controller), self.distance, self.target_position)
 
             vector = (self.target_position[0] - controller.movement_position[0],
                       self.target_position[1] - controller.movement_position[1])
@@ -575,7 +575,7 @@ class PRC(RobotController):
                 if controller.movement_angle_estimate_updated:
                     diff = angle_diff(controller.movement_angle, controller.theoretical_angle)
                     turn_times = int(diff / TICK_ROTATE + 0.5)
-                    print "correction ticks: {}".format(turn_times)
+                    ##print "correction ticks: {}".format(turn_times)
                     if turn_times != 0:
                         c.append(PRC._TurnAngleTicks(controller, turn_times))
                         move_times = calibrate_move_times
@@ -609,7 +609,7 @@ class PRC(RobotController):
         def act(self):
 
             controller = self.controller
-            #print "MoveTicks {} ticks: {}".format(str(controller), self.move_times)
+            ##print "MoveTicks {} ticks: {}".format(str(controller), self.move_times)
             #simulate perfect movement, don't account for randomness as result will be different from robot's rand anyways
             controller.movement_position = simulate_move(self.move_times, 0, controller.movement_position,
                                                          controller.movement_angle)
@@ -620,7 +620,7 @@ class PRC(RobotController):
                                                                               controller.movement_position,
                                                                               controller.movement_angle)
 
-            #print "-movement_position: {}".format(controller.movement_position)
+            ##print "-movement_position: {}".format(controller.movement_position)
             return [MOVE, self.move_times]
 
         def done(self):
@@ -660,7 +660,7 @@ class PRC(RobotController):
 
                 controller.movement_position = sum[0] / num_samples, sum[1] / num_samples
 
-                #print "UpdateMPosWithGps: samples {}, move_pos{}".format(num_samples, controller.movement_position)
+                ##print "UpdateMPosWithGps: samples {}, move_pos{}".format(num_samples, controller.movement_position)
                 return True
             elif(controller.gps_noise >= 15):
                 controller.measurements = controller.last_gps_read
@@ -696,7 +696,7 @@ class PRC(RobotController):
                 controller.movement_position = (controller.theoretical_position[0] + (target_dist - distance) * fwd[0],
                                                 controller.theoretical_position[1] + (target_dist - distance) * fwd[1])
 
-                #print "UpdateMPosWithSonar: target_dist {}, distance {}, move_pos{}".format(target_dist, distance, controller.movement_position)
+                ##print "UpdateMPosWithSonar: target_dist {}, distance {}, move_pos{}".format(target_dist, distance, controller.movement_position)
 
                 return True
             return None
@@ -770,17 +770,17 @@ class PRC(RobotController):
             num_samples = len(self.samples)
             # from highest to lowest-when equal highest takes precedence
             if num_samples >= controller.distance_samples_detect_wall:
-                #print "Check wall:{}".format(str(self.controller))
-                #print "-high-samples:{}".format(num_samples)
+                ##print "Check wall:{}".format(str(self.controller))
+                ##print "-high-samples:{}".format(num_samples)
                 distance = sum(self.samples) / num_samples
                 if distance < 0.1:
                     controller.change_ai(PRC.AI_KRETYN)
                     return True
                 else:
-                    #print "-distance:{}".format(distance)
+                    ##print "-distance:{}".format(distance)
                     distance -= 0.5
                     fields = int(distance + 0.5)
-                    #print "-fields:{}".format(fields)
+                    ##print "-fields:{}".format(fields)
                     controller.mark_clear_fields(fields, True)
                     return True
 
@@ -788,13 +788,13 @@ class PRC(RobotController):
             elif (not controller.has_perfect_steering
                   and (
                                 num_samples >= controller.distance_samples_medium or num_samples >= controller.distance_samples_low)):
-                #print "Check wall:{}".format(str(self.controller))
-                #print "-med, low-samples:{}".format(num_samples)
+                ##print "Check wall:{}".format(str(self.controller))
+                ##print "-med, low-samples:{}".format(num_samples)
                 distance = sum(self.samples) / num_samples
-                #print "-distance:{}".format(distance)
+                ##print "-distance:{}".format(distance)
                 fields = controller.get_clear_fields(distance,
                                                      PRC.DISTANCE_PRECISION_LOW if num_samples == controller.distance_samples_low else PRC.DISTANCE_PRECISION_MEDIUM)
-                #print "-fields:{}".format(fields)
+                ##print "-fields:{}".format(fields)
                 if fields > 1:
                     controller.mark_clear_fields(fields, False)
                     return True
@@ -818,7 +818,7 @@ class PRC(RobotController):
             if num_samples >= controller.distance_samples_detect_wall:
 
                 distance = sum(self.samples) / num_samples
-                print "Check broken move {}, {}".format(distance, self.required_distance)
+                ##print "Check broken move {}, {}".format(distance, self.required_distance)
                 if distance < self.required_distance:
                     controller.change_ai(PRC.AI_KRETYN)
                 return True
@@ -857,7 +857,7 @@ class PRC(RobotController):
                 self.target_angle = (controller.theoretical_angle + self.angle) % (2 * math.pi)
 
             change = angle_diff(controller.movement_angle, self.target_angle)
-            #print "turning {} angle by: {}".format(str(controller), self.angle)
+            ##print "turning {} angle by: {}".format(str(controller), self.angle)
             turn_times = int(change / TICK_ROTATE + 0.5)
             self.turn_angle_cmd = PRC._TurnAngleTicks(controller, turn_times)
             return self.turn_angle_cmd.act()
@@ -866,7 +866,7 @@ class PRC(RobotController):
             self.turn_angle_cmd.done()
             controller = self.controller
             controller.theoretical_angle = self.target_angle
-            #print "-theoretical_angle {}".format(controller.theoretical_angle)
+            ##print "-theoretical_angle {}".format(controller.theoretical_angle)
             return True
 
     class _TurnAngleTicks(object):
@@ -882,7 +882,7 @@ class PRC(RobotController):
 
         def done(self):
             self.controller.clear_angle_cache()
-            #print "movement_angle {}".format(controller.movement_angle)
+            ##print "movement_angle {}".format(controller.movement_angle)
             return True
 
 
@@ -937,14 +937,14 @@ class PRC(RobotController):
             self.licznik_glowny = 0
             self.czy_oglupiony = 0
 
-            # print "Drive max"+str(self.drive_max_diff)
-            # print "Max drive"+str(self.max_drive_max_diff)
+            # #print "Drive max"+str(self.drive_max_diff)
+            # #print "Max drive"+str(self.max_drive_max_diff)
 
         def act(self):
             return [SENSE_SONAR]
 
         def done(self):
-            # print self.drive_max_diff
+            # #print self.drive_max_diff
             controller = self.controller
             c = controller.commands
 
@@ -973,8 +973,8 @@ class PRC(RobotController):
                 if ruch < self.drive_max_diff:
                     self.mega_licznik = self.mega_licznik +1
                     kat_ruchu = max(1, int(((math.pi/4)-(controller.steering_noise*math.pi / 4))/TICK_ROTATE))
-                    # print "K1:"+str(self.kierunek_jazdy)
-                    # print "Lr:"+str(self.licznik_razy)
+                    ##print "K1:"+str(self.kierunek_jazdy)
+                    ##print "Lr:"+str(self.licznik_razy)
                     if self.kierunek_jazdy == 0 and self.licznik_razy <= self.ile_razy:
                         c.append(controller._TurnAngleTicks(controller, kat_ruchu))
                         self.licznik_razy = self.licznik_razy+1
@@ -994,18 +994,18 @@ class PRC(RobotController):
                 else:
                     dlugosc_ruchu = max(1, int(((0.5*self.suma_sample)-(controller.distance_noise*0.5*self.suma_sample))/self.drive_max_diff))
 
-                    # print "MD:"+str(self.max_drive_max_diff)
-                    # print "Ol:"+str(len(self.samples))
-                    # print "Om:"+str(sum(self.samples))
-                    # print "D:"+str(dlugosc_ruchu)
-                    # print "R:"+str(ruch)
+                    ##print "MD:"+str(self.max_drive_max_diff)
+                    ##print "Ol:"+str(len(self.samples))
+                    ##print "Om:"+str(sum(self.samples))
+                    ##print "D:"+str(dlugosc_ruchu)
+                    ##print "R:"+str(ruch)
 
                     self.mega_licznik = 0
                     self.drive_max_diff=self.max_drive_max_diff
                     c.append(controller._MoveTicks(controller, dlugosc_ruchu))
-            #print "DOdaje siebie!"
+            ##print "DOdaje siebie!"
             c.append(self)
-            #print "Zwracam true!n."
+            ##print "Zwracam true!n."
             return True
 
 def get_front(pos, angle):
