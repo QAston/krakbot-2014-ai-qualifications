@@ -1,0 +1,8 @@
+[
+    {
+        "time_elapsed": 31648.896239359015, 
+        "test_id": 1, 
+        "time_consumed_robot": 10000.0, 
+        "goal_achieved": false
+    }
+]

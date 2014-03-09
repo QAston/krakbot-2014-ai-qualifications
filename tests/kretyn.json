@@ -1,0 +1,13 @@
+[
+	{
+        "map": "maps/m1.map",
+        "steering_noise": 1.0,
+        "sonar_noise": 1.0,
+        "measurement_noise": 50.0,
+        "gps_delay": 10.0,
+        "distance_noise": 1.0,
+        "speed":  5.0,
+        "turning_speed": 100.0,
+        "simulation_time_limit":100000.0
+    }
+]
