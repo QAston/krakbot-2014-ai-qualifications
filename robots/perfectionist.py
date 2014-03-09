@@ -731,7 +731,7 @@ class PRC(RobotController):
             self.controller = controller
             self.phase = 0
             self.samples = controller.sonar_cache
-            self.odczyty = num_samples_needed(0.99, 0.8, controller.sonar_noise)
+            self.odczyty = num_samples_needed(0.99, 0.4, controller.sonar_noise)
             if self.odczyty < 1:
                 self.odczyty = 5
             self.mega_licznik = 0
@@ -787,8 +787,8 @@ class PRC(RobotController):
                         else:
                             self.kierunek_jazdy=0
 
-                    if self.mega_licznik % 10 == 0:
-                        self.drive_max_diff=self.drive_max_diff/3
+                    if self.mega_licznik % 35 == 0:
+                        self.drive_max_diff=self.drive_max_diff/2
                         print "Reset!"+str(self.drive_max_diff)
                 else:
                     self.mega_licznik=0
