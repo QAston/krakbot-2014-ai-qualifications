@@ -750,10 +750,12 @@ class PRC(RobotController):
                 self.odczyty = 5
             self.mega_licznik = 0
             self.drive_max_diff = controller.drive_max_diff
+            self.max_drive_max_diff = controller.drive_max_diff
             self.kierunek_jazdy = 0
             self.ile_razy = random.randint(7,25)
             self.licznik_razy = 0
             self.licznik_glowny = 0
+            self.czy_oglupiony = 0
 
         def act(self):
             return [SENSE_SONAR]
@@ -766,11 +768,17 @@ class PRC(RobotController):
             self.samples.append(controller.last_sonar_read)
 
             self.licznik_glowny=self.licznik_glowny+1
-            if self.licznik_glowny > 70000:
+            if self.czy_oglupiony == 1 and self.licznik_glowny >15000:
+                self.max_drive_max_diff = controller.drive_max_diff
+                self.czy_oglupiony=0
+                self.licznik_glowny=0
+            if self.licznik_glowny > 90000:
                 self.mega_licznik = 0
-                self.drive_max_diff=self.drive_max_diff/4
                 self.licznik_glowny = 0
-                #print "************************Zmniejszam licznik!"
+                self.czy_oglupiony=1
+                self.max_drive_max_diff=self.max_drive_max_diff/2
+                if self.max_drive_max_diff < 0.8:
+                    self.max_drive_max_diff = 0.7
 
             if len(self.samples) < self.odczyty:
                 return None
@@ -799,17 +807,18 @@ class PRC(RobotController):
                             self.kierunek_jazdy=0
 
                     if self.mega_licznik % 15 == 0:
-                        self.drive_max_diff=self.drive_max_diff/2
+                        if self.drive_max_diff > 0.6:
+                            self.drive_max_diff=self.max_drive_max_diff/2
                         #print "Reset!"+str(self.drive_max_diff)
                 else:
-                    #print self.drive_max_diff
-                    dlugosc_ruchu = max(1, int((1-(controller.distance_noise*1))/self.drive_max_diff))
-                    self.mega_licznik=0
-                    self.drive_max_diff=controller.drive_max_diff
+                    print self.drive_max_diff
+                    dlugosc_ruchu = max(1, int((0.5-(controller.distance_noise*0.5))/self.drive_max_diff))
+                    self.mega_licznik = 0
+                    self.drive_max_diff=self.max_drive_max_diff
                     c.append(controller._MoveTicks(controller, dlugosc_ruchu))
+
             c.append(self)
             return True
-            #return True
 
 
 def get_front(pos, angle):

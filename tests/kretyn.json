@@ -1,6 +1,6 @@
 [
 	{
-        "map": "maps/m1.map",
+        "map": "maps/m5.map",
         "steering_noise": 1.0,
         "sonar_noise": 1.0,
         "measurement_noise": 50.0,
