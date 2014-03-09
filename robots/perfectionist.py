@@ -662,7 +662,7 @@ class PRC(RobotController):
 
                 #print "UpdateMPosWithGps: samples {}, move_pos{}".format(num_samples, controller.movement_position)
                 return True
-            else:
+            elif(controller.gps_noise >= 15):
                 controller.measurements = controller.last_gps_read
                 controller.filter(controller.X, controller.P)
                 new_x = controller.X[0]
@@ -805,7 +805,7 @@ class PRC(RobotController):
         def __init__(self, controller, required_distance):
             self.controller = controller
             self.samples = controller.sonar_cache
-            self.required_distance = required_distance + 0.1
+            self.required_distance = required_distance + 0.3
 
         def act(self):
             return [SENSE_SONAR]
