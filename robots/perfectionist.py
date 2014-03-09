@@ -743,7 +743,6 @@ class PRC(RobotController):
     class _KKRety(object):
         def __init__(self, controller):
             self.controller = controller
-            self.phase = 0
             self.samples = controller.sonar_cache
             self.odczyty = num_samples_needed(0.99, 0.4, controller.sonar_noise)
             if self.odczyty < 1:
@@ -756,17 +755,20 @@ class PRC(RobotController):
             self.licznik_razy = 0
             self.licznik_glowny = 0
             self.czy_oglupiony = 0
+            #print "Init poczatek"
 
         def act(self):
+            #print "Act poczatek"
             return [SENSE_SONAR]
 
         def done(self):
+            #print "Sam poczatek"
             controller = self.controller
             c = controller.commands
             c.append(PRC._CheckFieldCommand(self.controller))
             c.append(PRC._CheckGoal(self.controller))
             self.samples.append(controller.last_sonar_read)
-
+            #print "Innu poczatek"
             self.licznik_glowny=self.licznik_glowny+1
             if self.czy_oglupiony == 1 and self.licznik_glowny >15000:
                 self.max_drive_max_diff = controller.drive_max_diff
@@ -781,23 +783,24 @@ class PRC(RobotController):
                     self.max_drive_max_diff = 0.7
 
             if len(self.samples) < self.odczyty:
+                #print "Odczytuje"
                 return None
             else:
                 ruch = sum(self.samples)/self.odczyty
                 controller.clear_angle_cache()
-
+                #print "Odrazu poczatek"
                 if ruch < self.drive_max_diff:
                     self.mega_licznik = self.mega_licznik +1
                     kat_ruchu = max(1, int(((math.pi/4)-(controller.steering_noise*math.pi / 4))/TICK_ROTATE))
-
+                    #print "Poczatek2"
                     if self.kierunek_jazdy == 0 and self.licznik_razy<=self.ile_razy:
                         c.append(controller._TurnAngleTicks(controller,kat_ruchu))
                         self.licznik_razy=self.licznik_razy+1
-
+                    #print "Poczatek3"
                     if self.kierunek_jazdy == 1 and self.licznik_razy<=self.ile_razy:
                         c.append(controller._TurnAngleTicks(controller,-kat_ruchu))
                         self.licznik_razy=self.licznik_razy+1
-
+                    #print "Poczatek4"
                     if self.licznik_razy==self.ile_razy:
                         self.licznik_razy=0
                         self.ile_razy=random.randint(13,50)
@@ -805,19 +808,21 @@ class PRC(RobotController):
                             self.kierunek_jazdy=1
                         else:
                             self.kierunek_jazdy=0
-
+                    #print "Poczatek5"
                     if self.mega_licznik % 15 == 0:
                         if self.drive_max_diff > 0.6:
                             self.drive_max_diff=self.max_drive_max_diff/2
-                        #print "Reset!"+str(self.drive_max_diff)
+                    #print "Poczatek6"
                 else:
-                    print self.drive_max_diff
+                    #print self.drive_max_diff
                     dlugosc_ruchu = max(1, int((0.5-(controller.distance_noise*0.5))/self.drive_max_diff))
                     self.mega_licznik = 0
                     self.drive_max_diff=self.max_drive_max_diff
+                    #print "Poczatek7"
                     c.append(controller._MoveTicks(controller, dlugosc_ruchu))
-
+            #print "DOdaje siebie!"
             c.append(self)
+            #print "Zwracam true!n."
             return True
 
 
