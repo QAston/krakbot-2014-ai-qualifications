@@ -1,10 +1,10 @@
 from heapq import heappush, heappop
 
-grid = [[0, 1, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0]]
+grid = {(0,0):(0,0), (0,1):(1,0), (0,2):(0,0), (0,3):(0,0), (0,4):(0,0), (0,5):(0,0),
+        (1,0):(0,0), (1,1):(1,0), (1,2):(0,0), (1,3):(0,0), (1,4):(0,0), (1,5):(0,0),
+        (2,0):(0,0), (2,1):(1,0), (2,2):(0,0), (2,3):(0,0), (2,4):(0,0), (2,5):(0,0),
+        (3,0):(0,0), (3,1):(1,0), (3,2):(0,0), (3,3):(0,0), (3,4):(0,0), (3,5):(0,0),
+        (4,0):(0,0), (4,1):(0,0), (4,2):(0,0), (4,3):(0,0), (4,4):(1,0), (4,5):(0,0)}
 
 init = [0, 0]
 
@@ -15,14 +15,11 @@ delta = [[-1, 0 ], # go up
 
 delta_name = ['^', '<', 'v', '>']
 
-cost = 1
-
 current_goal_area = (None, 4, None, 5)
 
 ### Map constants ###
 MAP_GOAL = 4 # coding MAP_GOAL
 MAP_START_POSITION = 3
-SQUARE_SIDE = 1.0
 MAP_WALL = 1 # coding MAP_WALL
 MAP_WHITE = 0 # coding MAP_WHITE
 MAP_SPECIAL_DIRECTION = 11 # coding [MAP_SPECIAL_DIRECTION, DIRECTION]
@@ -112,22 +109,34 @@ def calc_goal_area_heuristic(goal_area, position):
 
     return x + y
 
-# ----------------------------------------
-# modify code below
-# ----------------------------------------
+def get_planned_cost(grid, pos, vector):
+    return 1
 
-def search():
-    closed = [[0 for row in range(len(grid[0]))] for col in range(len(grid))]
-    closed[init[0]][init[1]] = 1
+def path_can_enter(grid, pos):
+    return pos not in grid or  grid[pos][0] != MAP_WALL
 
-    expand = [[-1 for row in range(len(grid[0]))] for col in range(len(grid))]
-    action = [[-1 for row in range(len(grid[0]))] for col in range(len(grid))]
+#returns a STACK with path
+def actions_to_path(start, goal, action):
+    path = []
+    curr = goal
+    while (curr != start):
+        vec = delta[action[curr]]
+        curr = curr[0] - vec[0], curr[1] - vec[1]
+        path.append(vec)
 
+    return path
 
-    x = init[0]
-    y = init[1]
+def search(pos, current_goal_area, grid):
+    closed = {}
+    closed[pos] = 1
+
+    expand = {}
+    action = {}
+
+    x = pos[0]
+    y = pos[1]
     g = 0
-    h = calc_goal_area_heuristic(current_goal_area, (x, y))
+    h = calc_goal_area_heuristic(current_goal_area, pos)
     f = g + h
 
     open = []
@@ -137,40 +146,40 @@ def search():
     resign = False # flag set if we can't find expand
     count = 0
 
+    found_goal = None
+
     while not found and not resign:
         if len(open) == 0:
             resign = True
-            return "Fail"
+            return None
         else:
             next = heappop(open)
 
             x = next[3]
             y = next[4]
             g = next[1]
-            expand[x][y] = count
+            expand[(x,y)] = count
             count += 1
 
             if is_in_goal_area(current_goal_area, (x, y)):
                 found = True
+                found_goal = (x, y)
             else:
                 #expand winning node
                 for i in range(len(delta)):
                     x2 = x + delta[i][0]
                     y2 = y + delta[i][1]
-                    if x2 >= 0 and x2 < len(grid) and y2 >=0 and y2 < len(grid[0]):
-                        if closed[x2][y2] == 0 and grid[x2][y2] == 0:
-                            g2 = g + cost
+                    if x2 >= 0  and y2 >=0:
+                        if (x2,y2) not in closed and path_can_enter(grid, (x2,y2)):
+                            g2 = g + get_planned_cost(grid, (x, y), (x2, y2))
                             h2 = calc_goal_area_heuristic(current_goal_area, (x2,y2))
                             f2 = g2+h2
                             heappush(open, (f2, g2, h2, x2, y2))
-                            closed[x2][y2] = 1
-                            action[x2][y2] = i
-    for i in range(len(expand)):
-        print expand[i]
-    return expand #Leave this line for grading purposes!
+                            closed[(x2,y2)] = 1
+                            action[(x2,y2)] = i
+    return actions_to_path(pos, found_goal, action)
 
-print "goal test: ", is_in_goal_area(current_goal_area, (4,5))
-search()
+print search((init[0], init[1]), current_goal_area, grid)
 
 
 

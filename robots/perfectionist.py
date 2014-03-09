@@ -285,10 +285,11 @@ class PRC(RobotController):
             controller = self.controller
             c = controller.commands
 
-            controller.plan = []
-            controller.plan.append(0)
+            print "Resetting plan"
+            controller.plan = [2, 0, 0, 1]
 
-            self.controller.commands = [PRC._ContinuePlan(self.controller)]
+            controller.commands = [PRC._ContinuePlan(controller)]
+            return None
 
         def done(self):
             return True
@@ -299,6 +300,7 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
+            print "_ContinuePlan"
             controller = self.controller
             if len(controller.plan) == 0:
                 self.controller.commands = [PRC._PlanPath(controller)]
@@ -316,10 +318,51 @@ class PRC(RobotController):
             self.dir = dir
 
         def act(self):
+            print "_PlannedMove"
             controller = self.controller
             c = []
-            pos = controller.get_discrete_position()
-            controller.commands = [PRC._MoveNext(controller), PRC._CheckCurrent(controller)] + c
+            dir = self.dir
+            if dir == 0:
+                c.append(PRC._MoveNext(controller))
+            elif dir == 1:
+                c.append(PRC._TurnAngleCommand(controller, 0.5 * math.pi))
+                c.append(PRC._MoveNext(controller))
+            elif dir == 2:
+                c.append(PRC._TurnAngleCommand(controller, math.pi))
+                c.append(PRC._MoveNext(controller))
+            elif dir == 3:
+                c.append(PRC._TurnAngleCommand(controller, -0.5 * math.pi))
+                c.append(PRC._MoveNext(controller))
+            else:
+                raise ValueError("Blad")
+
+            controller.commands = c + controller.commands
+
+        def done(self):
+            return True
+
+    class _CheckPlannedMoveWall(object):
+        def __init__(self, controller):
+            self.controller = controller
+
+        def act(self):
+            print "_CheckPlannedMoveWall"
+            controller = self.controller
+            forward = controller.get_forward_position()
+            if controller.times_visited[forward] == 65536:
+                controller.commands = [PRC._PlanPath(controller)]
+
+            return None
+
+        def done(self):
+            return True
+
+    class _CheckPlannedMoveField(object):
+        def __init__(self, controller):
+            self.controller = controller
+
+        def act(self):
+            return None
 
         def done(self):
             return True
@@ -403,9 +446,18 @@ class PRC(RobotController):
             self.controller = controller
 
         def act(self):
-            c = self.controller.commands
+            c = []
+            controller = self.controller
+
+            forward = controller.get_forward_position()
+            if forward not in controller.times_visited:
+                c.append(PRC._CheckWall(self.controller))
+            #todo: maybe remove this
+            c.append(PRC._CheckPlannedMoveWall(self.controller))
+
             c.append(PRC._MoveDistanceCommand(self.controller, 1.0))
             c.append(PRC._CheckCurrent(self.controller))
+            controller.commands = c + controller.commands
             return None
 
         def done(self):
